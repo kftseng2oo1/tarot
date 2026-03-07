@@ -2042,7 +2042,7 @@ ${cardsDesc}
   // 部署到 GitHub Pages 後，請將下方 WORKER_URL 換成你的 Cloudflare Worker 網址
   // 格式：https://tarot-proxy.你的名字.workers.dev
   // 若尚未設定，AI 功能會顯示設定引導
-  const WORKER_URL = window.TAROT_WORKER_URL || '';
+  const WORKER_URL = window.TAROT_WORKER_URL || 'https://tarot-proxy.kftseng2oo1.workers.dev';
 
   const host = location.hostname;
   const onClaudeAI = host.includes('claude.ai') || host.includes('anthropic.com');
