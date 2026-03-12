@@ -9,6 +9,10 @@
 <meta name="apple-mobile-web-app-title" content="塔羅秘境">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0612">
+<link rel="manifest" href="manifest.json">
+<!-- iOS 主畫面圖示（SVG 轉 PNG 用程式產生） -->
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>塔羅秘境 · Arcana v2</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;500;600&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
 <style>
@@ -2042,7 +2046,7 @@ ${cardsDesc}
   // 部署到 GitHub Pages 後，請將下方 WORKER_URL 換成你的 Cloudflare Worker 網址
   // 格式：https://tarot-proxy.你的名字.workers.dev
   // 若尚未設定，AI 功能會顯示設定引導
-  const WORKER_URL = window.TAROT_WORKER_URL || 'https://tarot-proxy.kftseng2oo1.workers.dev';
+  const WORKER_URL = window.TAROT_WORKER_URL || '';
 
   const host = location.hostname;
   const onClaudeAI = host.includes('claude.ai') || host.includes('anthropic.com');
@@ -2322,6 +2326,15 @@ document.getElementById('saveModal').addEventListener('click',function(e){if(e.t
 // ═══════════════════════════════════════════════
 initDaily();
 renderLib();
+
+// ── PWA Service Worker 註冊 ──────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
 </script>
 </body>
 </html>

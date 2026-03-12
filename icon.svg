@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- 背景漸層 -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1a0535"/>
+      <stop offset="100%" stop-color="#0a0612"/>
+    </linearGradient>
+
+    <!-- 水晶球漸層 -->
+    <radialGradient id="ballGrad" cx="38%" cy="32%" r="65%">
+      <stop offset="0%"   stop-color="#e8e0f8" stop-opacity="0.95"/>
+      <stop offset="25%"  stop-color="#b090e8" stop-opacity="0.85"/>
+      <stop offset="60%"  stop-color="#4a1f7a" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0d0520" stop-opacity="1"/>
+    </radialGradient>
+
+    <!-- 球體內霧氣 -->
+    <radialGradient id="mistGrad" cx="50%" cy="60%" r="55%">
+      <stop offset="0%"   stop-color="#8844cc" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0d0520" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 金色霧氣 -->
+    <radialGradient id="goldMist" cx="40%" cy="45%" r="45%">
+      <stop offset="0%"   stop-color="#c9a84c" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 高光 -->
+    <radialGradient id="hilight" cx="30%" cy="28%" r="38%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.75"/>
+      <stop offset="50%"  stop-color="#e8e0ff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 底部反光 -->
+    <radialGradient id="bottomGlow" cx="55%" cy="80%" r="35%">
+      <stop offset="0%"   stop-color="#c9a84c" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- 外光暈 -->
+    <filter id="outerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 星點光暈 -->
+    <filter id="starGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 文字發光 -->
+    <filter id="textGlow" x="-20%" y="-50%" width="140%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 圓形裁切 -->
+    <clipPath id="ballClip">
+      <circle cx="256" cy="220" r="148"/>
+    </clipPath>
+  </defs>
+
+  <!-- ── 圓角背景 ── -->
+  <rect width="512" height="512" rx="100" ry="100" fill="url(#bgGrad)"/>
+
+  <!-- 背景細緻星空 -->
+  <g opacity="0.5">
+    <circle cx="60"  cy="55"  r="1.2" fill="#c9a84c"/>
+    <circle cx="130" cy="30"  r="0.8" fill="#fff"/>
+    <circle cx="200" cy="70"  r="1.0" fill="#fff"/>
+    <circle cx="320" cy="25"  r="0.9" fill="#c9a84c"/>
+    <circle cx="420" cy="50"  r="1.1" fill="#fff"/>
+    <circle cx="470" cy="90"  r="0.7" fill="#c9a84c"/>
+    <circle cx="40"  cy="150" r="0.8" fill="#fff"/>
+    <circle cx="490" cy="180" r="1.0" fill="#fff"/>
+    <circle cx="80"  cy="400" r="0.9" fill="#c9a84c"/>
+    <circle cx="450" cy="420" r="1.1" fill="#fff"/>
+    <circle cx="30"  cy="460" r="0.8" fill="#fff"/>
+    <circle cx="500" cy="460" r="0.7" fill="#c9a84c"/>
+  </g>
+
+  <!-- ── 水晶球外光暈 ── -->
+  <circle cx="256" cy="220" r="165"
+    fill="none"
+    stroke="#8844cc" stroke-width="2" stroke-opacity="0.2"
+    filter="url(#outerGlow)"/>
+  <circle cx="256" cy="220" r="158"
+    fill="rgba(138,68,204,0.08)"/>
+
+  <!-- ── 水晶球主體 ── -->
+  <circle cx="256" cy="220" r="148" fill="url(#ballGrad)"/>
+
+  <!-- 球內霧氣層（裁切在球內） -->
+  <g clip-path="url(#ballClip)">
+    <ellipse cx="256" cy="250" rx="130" ry="90" fill="url(#mistGrad)"/>
+    <ellipse cx="220" cy="200" rx="100" ry="70" fill="url(#goldMist)"/>
+
+    <!-- 球內旋轉霧氣細節 -->
+    <ellipse cx="290" cy="230" rx="80" ry="45"
+      fill="#6030a0" fill-opacity="0.15"
+      transform="rotate(-25, 256, 220)"/>
+    <ellipse cx="220" cy="260" rx="65" ry="35"
+      fill="#c9a84c" fill-opacity="0.08"
+      transform="rotate(15, 256, 220)"/>
+
+    <!-- 球內星點 -->
+    <g filter="url(#starGlow)">
+      <circle cx="220" cy="190" r="2.5" fill="#fff"      opacity="0.9"/>
+      <circle cx="290" cy="200" r="2.0" fill="#c9a84c"   opacity="0.85"/>
+      <circle cx="200" cy="240" r="2.2" fill="#fff"      opacity="0.7"/>
+      <circle cx="300" cy="255" r="1.8" fill="#a0c8ff"   opacity="0.9"/>
+      <circle cx="250" cy="170" r="2.0" fill="#fff"      opacity="0.65"/>
+      <circle cx="320" cy="230" r="1.6" fill="#c9a84c"   opacity="0.8"/>
+      <circle cx="185" cy="210" r="1.8" fill="#fff"      opacity="0.55"/>
+      <circle cx="270" cy="155" r="1.5" fill="#c8c8d8"   opacity="0.75"/>
+      <circle cx="235" cy="275" r="1.9" fill="#fff"      opacity="0.6"/>
+      <circle cx="310" cy="175" r="1.4" fill="#c9a84c"   opacity="0.7"/>
+    </g>
+  </g>
+
+  <!-- 球體底部金色反光 -->
+  <circle cx="256" cy="220" r="148" fill="url(#bottomGlow)"/>
+
+  <!-- 主高光（固定左上） -->
+  <ellipse cx="205" cy="165" rx="58" ry="42" fill="url(#hilight)"/>
+  <!-- 小高光點 -->
+  <circle cx="188" cy="150" r="14" fill="#fff" opacity="0.45"/>
+  <circle cx="178" cy="144" r="6"  fill="#fff" opacity="0.6"/>
+
+  <!-- 球體邊緣暗邊 -->
+  <circle cx="256" cy="220" r="148"
+    fill="none" stroke="#000" stroke-width="10" stroke-opacity="0.35"/>
+  <circle cx="256" cy="220" r="143"
+    fill="none" stroke="#4a1f7a" stroke-width="4" stroke-opacity="0.4"/>
+
+  <!-- ── 底座 ── -->
+  <!-- 底座主體 -->
+  <ellipse cx="256" cy="392" rx="110" ry="22"
+    fill="url(#bgGrad)" stroke="#c9a84c" stroke-width="1.5" stroke-opacity="0.5"/>
+  <!-- 底座金色反光 -->
+  <ellipse cx="256" cy="388" rx="90" ry="10"
+    fill="#c9a84c" fill-opacity="0.25"/>
+  <ellipse cx="240" cy="385" rx="55" ry="5"
+    fill="#c9a84c" fill-opacity="0.2"/>
+
+  <!-- ── 四角裝飾星 ── -->
+  <g fill="#c9a84c" filter="url(#starGlow)">
+    <!-- 左上 ✦ -->
+    <text x="38" y="82" font-size="28" font-family="serif" opacity="0.6">✦</text>
+    <!-- 右上 ✦ -->
+    <text x="446" y="82" font-size="28" font-family="serif" opacity="0.6">✦</text>
+    <!-- 左下 ✦ -->
+    <text x="38" y="478" font-size="28" font-family="serif" opacity="0.6">✦</text>
+    <!-- 右下 ✦ -->
+    <text x="446" y="478" font-size="28" font-family="serif" opacity="0.6">✦</text>
+  </g>
+
+  <!-- ── App 名稱文字 ── -->
+  <g filter="url(#textGlow)">
+    <!-- 主標題 -->
+    <text x="256" y="450"
+      font-family="'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif"
+      font-size="38" font-weight="bold" letter-spacing="6"
+      text-anchor="middle" fill="#c9a84c" opacity="0.92">ARCANA</text>
+    <!-- 副標題 -->
+    <text x="256" y="478"
+      font-family="Georgia, serif"
+      font-size="14" letter-spacing="4"
+      text-anchor="middle" fill="#c9a84c" opacity="0.5">塔羅秘境</text>
+  </g>
+</svg>
