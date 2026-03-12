@@ -2,7 +2,7 @@
   "name": "塔羅秘境 · Arcana",
   "short_name": "塔羅秘境",
   "description": "融合榮格心理學與傳統塔羅的AI占卜體驗",
-  "start_url": "./index.html",
+  "start_url": "./tarot-arcana-v2.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0612",
