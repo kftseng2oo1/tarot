@@ -1,27 +1,54 @@
 {
-  "name": "塔羅秘境 · Arcana",
-  "short_name": "塔羅秘境",
-  "description": "融合榮格心理學與傳統塔羅的AI占卜體驗",
-  "start_url": "./tarot-arcana-v2.html",
+  "name": "AI秘境塔羅",
+  "short_name": "AI秘境塔羅",
+  "description": "",
+  "start_url": "/tarot/",
+  "scope": "/tarot/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0a0612",
-  "theme_color": "#0a0612",
+  "orientation": "any",
+  "theme_color": "#1a73e8",
+  "background_color": "#ffffff",
   "lang": "zh-TW",
+  "categories": [
+    "utilities"
+  ],
+  "shortcuts": [
+    {
+      "name": "開啟 AI秘境塔羅",
+      "short_name": "AI秘境塔羅",
+      "url": "/tarot/",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
   "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
-  ],
-  "categories": ["entertainment", "lifestyle"],
-  "screenshots": []
+  ]
 }
