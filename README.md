@@ -1,44 +1,22 @@
-# AI秘境塔羅
+# 塔羅秘境 · Arcana v3
 
-> 一個 Progressive Web App
+AI 塔羅占卜：每日一牌、多種牌陣、深度分析、占卜日誌與牌義辭典。
 
-## 📦 包含檔案
+**線上使用**：https://kftseng2oo1.github.io/tarot/
 
-- `icon-192.png`
-- `icon-512.png`
-- `manifest.json`
-- `sw.js`
-- `index.html`
-- `icon.svg`
-- `icon-maskable.svg`
-- `offline.html`
+## 主要功能
+- **每日一牌**：轉動水晶球抽牌，可設定每日提醒時間
+- **牌陣占卜**：先選問題類別（綜合、投資理財、購屋置產、生育孕產、健康身體、事業成長、感情關係、靈性修行、其他），會依問題內容自動判斷類別
+- **✦ 深度分析**：AI 結合元素、星體、月相、節氣解讀
+- 解讀風格：🌙 詩意、🧠 心理、⚡ 直白；可語音朗讀
+- **占卜日誌**：儲存每次結果與心情
+- **牌義辭典**：查閱每張牌的正逆位牌義
 
-## 🚀 部署到 GitHub Pages
+## 技術與依賴
+- 單檔 HTML PWA（`index.html` 內含全部 HTML/CSS/JS），`manifest.json` + `sw.js` 提供安裝到主畫面與離線快取。（約 290 KB）
+- AI 經 `arcar.kftseng2oo1.workers.dev` 代理
+- `speechSynthesis`、Notification、Web Share
+- 本機資料：`arcana_journal`、`tarotJournal`、`tarot_reading_style`、`tarot_notif`、`tarot_notif_hour`
 
-```bash
-git init
-git add .
-git commit -m "init: AI秘境塔羅 PWA"
-git branch -M main
-git remote add origin https://github.com/<username>/<repo>.git
-git push -u origin main
-```
-
-然後在 GitHub repo → **Settings → Pages** → Source 選 `main` 分支，等待幾分鐘後即可訪問。
-
-## 📱 安裝 PWA
-
-在支援的瀏覽器（Chrome / Edge / Safari iOS）中打開網頁，  
-點擊「**安裝**」或「**加入主畫面**」即可將此 App 安裝到裝置。
-
-## ⚙ 技術規格
-
-| 項目 | 值 |
-|------|-----|
-| display | standalone |
-| theme_color | #1a73e8 |
-| lang | zh-TW |
-| scope | /tarot/ |
-
----
-*由 [PWA 打包神器](https://github.com) 自動生成*
+## 相關 repo
+- [v3taro](https://github.com/kftseng2oo1/v3taro)：幾乎相同的另一份
