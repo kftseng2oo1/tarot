@@ -260,6 +260,8 @@ border-color:rgba(201,168,76,.7);z-index:2;animation:ccCross .6s ease both;}
 @keyframes ccCross{from{opacity:0;transform:translateY(32px) rotate(90deg) scale(.7)}to{opacity:1;transform:translateY(32px) rotate(90deg)}}
 @media(max-width:380px){.cc-card{width:54px;height:92px;}.cc-stack{width:94px;height:134px;}
 .celtic-staff .cc-card{width:46px;height:76px;}.celtic-wrap{gap:8px;}.celtic-cross{gap:6px;}}
+.stream-caret{display:inline-block;color:var(--gold);opacity:.7;animation:caretBlink 1s steps(2) infinite;margin-left:2px;}
+@keyframes caretBlink{50%{opacity:0}}
 .pick-head{text-align:center;margin:8px 0 6px;}
 .pick-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.25em;color:var(--gold);opacity:.7;}
 .pick-now{font-size:16px;color:var(--cream);margin-top:6px;}
@@ -3810,6 +3812,132 @@ function applyInline(text) {
 
 
 
+
+// ═══════════════════════════════════════════════════════════════
+// Claude 呼叫（支援串流；Worker 不支援時自動退回一般模式）
+// ═══════════════════════════════════════════════════════════════
+function apiErr(status, data, rawText) {
+  if (status === 401) return new Error('ANTHROPIC_API_KEY 無效，請至 Cloudflare Worker 重新設定');
+  if (status === 429) return new Error('API 使用量已達上限，請稍後再試');
+  const m = data?.error?.message || (typeof data?.error === 'string' ? data.error : '') ;
+  return new Error(m || `HTTP ${status}${rawText ? '\n' + rawText.slice(0,120) : ''}`);
+}
+
+// 解析 Anthropic SSE 文字，回傳累積的文字（容錯：不完整的行留到下次）
+function parseSSEChunk(buf, onDelta) {
+  const lines = buf.split('\n');
+  const rest = lines.pop();
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l.startsWith('data:')) continue;
+    const payload = l.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+    let ev; try { ev = JSON.parse(payload); } catch (e) { continue; }
+    if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') onDelta(ev.delta.text);
+    else if (ev.type === 'error') throw new Error(ev.error?.message || 'AI 串流錯誤');
+  }
+  return rest;
+}
+
+async function callClaudeOnce(body) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const rawText = await res.text();
+  let data;
+  try { data = JSON.parse(rawText); }
+  catch (e) { throw new Error(`Worker 回傳非預期格式（HTTP ${res.status}）\n${rawText.slice(0,120)}`); }
+  if (!res.ok || data.error) throw apiErr(res.status, data, '');
+  const text = (data.content || []).filter(b => b.type === 'text' || b.text).map(b => b.text).join('');
+  if (!text) throw new Error('AI 回傳空白內容，請重試');
+  return text;
+}
+
+/**
+ * callClaude(body, onText)
+ *  - 先以 stream:true 呼叫；Worker 若直接轉發 SSE，邊收邊呼叫 onText(目前全文)
+ *  - Worker 若把整段 SSE 一次回傳，也能解析
+ *  - Worker 若回傳 JSON 或串流失敗（非 401/429），自動改用一般模式重試一次
+ */
+async function callClaude(body, onText) {
+  // Worker 不支援串流時記住 24 小時，避免每次開 App 都浪費一次呼叫
+  if (S.noStream === undefined) {
+    const t = +localStorage.getItem('tarot_nostream_at') || 0;
+    S.noStream = Date.now() - t < 864e5;
+  }
+  if (S.noStream || !window.ReadableStream || !window.TextDecoder) {
+    const t = await callClaudeOnce(body); onText?.(t); return t;
+  }
+  let full = '';
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, stream: true }),
+    });
+    if (res.status === 401 || res.status === 429) {
+      let d = null; try { d = await res.json(); } catch (e) {}
+      throw Object.assign(apiErr(res.status, d), { fatal: true });
+    }
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', head = '', mode = null; // 'sse' | 'json'
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = dec.decode(value, { stream: true });
+      if (!mode) {
+        head += chunk;
+        const t = head.trimStart();
+        if (!t) continue;
+        mode = (t.startsWith('event:') || t.startsWith('data:')) ? 'sse' : 'json';
+        if (mode === 'sse') { buf = head; head = ''; }
+        else continue;
+      } else if (mode === 'json') { head += chunk; continue; }
+      else buf += chunk;
+      buf = parseSSEChunk(buf, d => { full += d; onText?.(full); });
+    }
+    if (mode === 'sse') {
+      parseSSEChunk(buf + '\n', d => { full += d; onText?.(full); });
+      if (!full) throw new Error('串流回傳空白');
+      return full;
+    }
+    // Worker 不支援串流、回傳一般 JSON
+    let data; try { data = JSON.parse(head); } catch (e) { throw new Error('非預期格式'); }
+    if (data.error) throw new Error(data.error.message || 'error');
+    const text = (data.content || []).map(b => b.text || '').join('');
+    if (!text) throw new Error('空白');
+    onText?.(text);
+    return text;
+  } catch (e) {
+    if (e.fatal) throw e;
+    if (full) throw new Error('連線中斷，請重試');   // 已經顯示一半就不要重送
+    console.warn('[stream] 改用一般模式：', e.message);
+    S.noStream = true;
+    try { localStorage.setItem('tarot_nostream_at', String(Date.now())); } catch (_) {}
+    const t = await callClaudeOnce(body); onText?.(t); return t;
+  }
+}
+
+// 串流顯示時節流：每個畫格最多重繪一次
+function makeStreamRenderer(el) {
+  let pending = null, scheduled = false, stopped = false;
+  const fn = text => {
+    pending = text;
+    if (scheduled || stopped) return;
+    scheduled = true;
+    requestAnimationFrame(() => {
+      scheduled = false;
+      if (stopped) return;
+      el.innerHTML = renderMarkdown(pending) + '<span class="stream-caret">▍</span>';
+    });
+  };
+  fn.stop = () => { stopped = true; };
+  return fn;
+}
+
 const AI_SYSTEM_PROMPT = '你是一位深諳塔羅、五行、榮格心理學的解讀大師。用繁體中文回答，語氣溫柔而有詩意，如宇宙透過牌卡低語。';
 
 // ── 主要 AI 呼叫函式 ──────────────────────────────────────────
@@ -3844,36 +3972,24 @@ async function getAI(type) {
   const prompt = buildEnrichedPrompt(type);
 
   try {
-    const res = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: type === 'daily' ? 800 : (SPREADS[S.selectedSpread]?.count >= 10 ? 3200 : 2000),
-        system: AI_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+    // 串流中先顯示一個暫時區塊，字一段段出來
+    let streamEl = null, renderStream = null;
+    const raw = await callClaude({
+      model: 'claude-haiku-4-5',
+      max_tokens: type === 'daily' ? 800 : (SPREADS[S.selectedSpread]?.count >= 10 ? 3200 : 2000),
+      system: AI_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: prompt }],
+    }, text => {
+      if (!streamEl) {
+        txt.innerHTML = `<div class="ai-response"><div class="ai-resp-header">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;color:var(--gold);opacity:.55;">✦ 智者正在述說… ✦</span>
+          </div><div class="ai-resp-body" id="aiStream_${type}"></div></div>`;
+        streamEl = document.getElementById(`aiStream_${type}`);
+        renderStream = makeStreamRenderer(streamEl);
+      }
+      renderStream(text);
     });
-
-    const rawText = await res.text();
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch(e) {
-      throw new Error(`Worker 回傳非預期格式（HTTP ${res.status}）\n${rawText.slice(0,120)}`);
-    }
-
-    if (!res.ok) {
-      const errMsg = data?.error?.message || `HTTP ${res.status}`;
-      if (res.status === 401) throw new Error('ANTHROPIC_API_KEY 無效，請至 Cloudflare Worker 重新設定');
-      if (res.status === 429) throw new Error('API 使用量已達上限，請稍後再試');
-      throw new Error(errMsg);
-    }
-
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-
-    const raw = data.content?.[0]?.text || '';
-    if (!raw) throw new Error('AI 回傳空白內容，請重試');
+    renderStream?.stop();
     const rendered = renderMarkdown(raw);
 
     txt.innerHTML = `
@@ -4178,26 +4294,15 @@ async function sendFollowup(type) {
     { role: 'user', content: `${question}\n\n（請結合剛才的牌卡訊息，簡潔回應，約 150 字以內。）` },
   ];
 
+  const renderFu = makeStreamRenderer(document.getElementById(loadId));
   try {
-    const res = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 400,
-        system: AI_SYSTEM_PROMPT,
-        messages,
-      }),
-    });
-    const rawText = await res.text();
-    let data;
-    try { data = JSON.parse(rawText); }
-    catch (e) { throw new Error(`Worker 回傳非預期格式（HTTP ${res.status}）`); }
-    if (!res.ok || data.error) {
-      if (res.status === 429) throw new Error('API 使用量已達上限，請稍後再試');
-      throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
-    }
-    const answer = data.content?.[0]?.text || '';
+    const answer = await callClaude({
+      model: 'claude-haiku-4-5',
+      max_tokens: 400,
+      system: AI_SYSTEM_PROMPT,
+      messages,
+    }, renderFu);
+    renderFu.stop();
     if (!answer) throw new Error('AI 回傳空白內容，請重試');
     document.getElementById(loadId).innerHTML = renderMarkdown(answer);
     // 只有成功才寫入對話紀錄
@@ -4207,6 +4312,7 @@ async function sendFollowup(type) {
     const sid = S.lastAIEntryId?.[type];
     if (sid) { loadJournal(); const e = S.journal.find(x=>x.id===sid); if (e) { e.reading = last.raw; saveJournalLS(); } }
   } catch(e) {
+    renderFu.stop();
     document.getElementById(loadId).innerHTML = `<span style="color:#e07070;">回應失敗：${escHTML(e.message)}</span>`;
     inputEl.value = question; // 失敗時保留問題，方便重送
   }
