@@ -87,13 +87,14 @@ background:linear-gradient(to right,transparent,var(--gold),transparent);}
 .date-disp{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.3em;color:var(--gold-light);opacity:.55;margin-bottom:28px;}
 .card-stage{display:flex;justify-content:center;margin:16px 0 26px;perspective:1200px;}
 .tc{width:155px;height:272px;position:relative;cursor:pointer;
-transform-style:preserve-3d;transition:transform .85s cubic-bezier(.4,0,.2,1);
-filter:drop-shadow(0 20px 40px rgba(0,0,0,.65));}
+transform-style:preserve-3d;transition:transform .85s cubic-bezier(.4,0,.2,1);}
+/* 陰影放在牌面上：filter 會讓 preserve-3d 失效，翻牌後看到鏡像牌背 */
+.tc .cb,.tc .cf{box-shadow:0 20px 40px rgba(0,0,0,.65);}
 .tc.flipped{transform:rotateY(180deg);}
 .tc.reversed{transform:rotateY(180deg) rotateZ(180deg);}
 @media(hover:hover){
-.tc:not(.flipped):not(.reversed):hover{transform:translateY(-6px) scale(1.02);
-filter:drop-shadow(0 28px 48px rgba(0,0,0,.7)) drop-shadow(0 0 20px rgba(201,168,76,.2));}}
+.tc:not(.flipped):not(.reversed):hover{transform:translateY(-6px) scale(1.02);}
+.tc:not(.flipped):not(.reversed):hover .cb{box-shadow:0 28px 48px rgba(0,0,0,.7),0 0 20px rgba(201,168,76,.2);}}
 .cf,.cb{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
 .cb{background:linear-gradient(145deg,#1a0f2e 0%,#0d0820 50%,#150c25 100%);
 border:2px solid rgba(201,168,76,.4);display:flex;align-items:center;justify-content:center;
@@ -233,6 +234,34 @@ border:2px solid rgba(201,168,76,.48);animation:cardPop .55s cubic-bezier(.34,1.
 text-align:center;padding:0 4px;letter-spacing:.04em;line-height:1.3;}
 .sc-lbl{font-family:'Cinzel',serif;font-size:9px;color:var(--silver);opacity:.45;
 letter-spacing:.12em;text-transform:uppercase;max-width:90px;margin:0 auto;}
+.pick-head{text-align:center;margin:8px 0 6px;}
+.pick-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.25em;color:var(--gold);opacity:.7;}
+.pick-now{font-size:16px;color:var(--cream);margin-top:6px;}
+.pick-now b{color:var(--gold-light);font-weight:600;}
+.pick-sub{font-size:12px;color:var(--silver);opacity:.5;margin-top:4px;font-style:italic;}
+.pick-slots{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:14px 0 6px;}
+.pick-slot{width:44px;text-align:center;}
+.pick-slot .ps-card{width:44px;height:74px;border-radius:5px;border:1.5px dashed rgba(201,168,76,.25);
+margin:0 auto 4px;transition:all .3s;}
+.pick-slot.cur .ps-card{border-color:rgba(201,168,76,.7);box-shadow:0 0 12px rgba(201,168,76,.35);}
+.pick-slot.done .ps-card{border:1.5px solid rgba(201,168,76,.5);
+background:linear-gradient(145deg,#2a1545,#0d0820);animation:cardPop .45s ease;}
+.pick-slot .ps-lbl{font-size:9px;color:var(--silver);opacity:.55;line-height:1.2;word-break:keep-all;}
+.pick-deck{display:flex;flex-wrap:wrap;justify-content:center;padding:14px 10px 18px 22px;margin:6px auto 4px;max-width:640px;}
+.pick-card{width:34px;height:58px;margin:0 0 -14px -12px;border-radius:4px;cursor:pointer;
+background:linear-gradient(145deg,#24123d 0%,#0d0820 60%,#1a0f2e 100%);
+border:1px solid rgba(201,168,76,.45);box-shadow:-2px 2px 6px rgba(0,0,0,.5);
+position:relative;transition:transform .18s, opacity .35s, box-shadow .18s;
+-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+animation:deckIn .5s ease both;}
+.pick-card::after{content:'☽';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+font-size:11px;color:var(--gold);opacity:.4;}
+@keyframes deckIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(hover:hover){.pick-card:hover{transform:translateY(-10px);z-index:2;box-shadow:0 0 14px rgba(201,168,76,.45);}}
+.pick-card:active{transform:translateY(-10px);z-index:2;}
+.pick-card.taken{opacity:0;transform:translateY(-30px) scale(.8);pointer-events:none;}
+.pick-actions{display:flex;justify-content:center;gap:10px;margin:22px 0 8px;}
+.daily-done-note{font-size:12px;color:var(--silver);opacity:.5;font-style:italic;text-align:center;margin-top:10px;}
 .si-card{background:rgba(30,15,53,.5);border:1px solid rgba(201,168,76,.12);
 border-radius:8px;padding:0;margin-bottom:10px;overflow:hidden;}
 .si-header{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;transition:background .2s;}
@@ -825,9 +854,9 @@ color:var(--gold);opacity:.55;margin-bottom:8px;}
           <button class="ai-btn" id="dAIBtn" onclick="getAI('daily')">✦ 深度分析</button>
           <button class="btn-s" onclick="showWorkerSetup('daily')" title="設定 API Key">⚙</button>
           <button class="btn-s" onclick="openSaveModal('daily')">儲存至日誌</button>
-          <button class="btn-s" onclick="resetDaily()">重新抽牌</button>
           <button class="btn-s" id="notifToggleBtn" onclick="toggleNotification()" style="color:var(--silver);">🔕 每日提醒</button>
         </div>
+        <div class="daily-done-note">✦ 今日之牌已定，明天再來翻開新的一張 ✦</div>
         <div class="air" id="dailyAIR">
           <div class="air-lbl">✦ Claude AI · 深度解讀 ✦</div>
           <div id="styleBar_daily" style="display:flex;gap:6px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;">
@@ -981,6 +1010,7 @@ color:var(--gold);opacity:.55;margin-bottom:8px;}
     </div>
     <div id="spreadResults" style="display:none;animation:fadeUp .5s ease;">
       <div id="spreadCardArea"></div>
+      <div id="spreadDoneArea">
       <div id="spreadAnalysisArea"></div>
       <div id="detectNoticeArea"></div>
       <div id="spreadDeepArea"></div>
@@ -990,6 +1020,7 @@ color:var(--gold);opacity:.55;margin-bottom:8px;}
         <button class="btn-s" onclick="showWorkerSetup('spread')" title="設定 API Key">⚙</button>
         <button class="btn-s" onclick="openSaveModal('spread')">儲存至日誌</button>
         <button class="btn-s" onclick="resetSpread()">重新占卜</button>
+      </div>
       </div>
       <div class="air" id="spreadAIR">
         <div class="air-lbl">✦ Claude AI · 深度解讀 ✦</div>
@@ -3259,8 +3290,12 @@ function initDaily() {
   document.getElementById('todayDate').textContent=
     `${d.getFullYear()} · ${d.getMonth()+1}月${d.getDate()}日 · ${['日','一','二','三','四','五','六'][d.getDay()]}`;
 
-  // Load or pick today's card
+  // Load or pick today's card（一天固定一張）
   const key='arcana_daily_'+getTodayKey();
+  // 清掉以前日期的舊紀錄，避免 localStorage 越積越多
+  Object.keys(localStorage).forEach(k=>{
+    if((k.startsWith('arcana_daily_')||k.startsWith('arcana_dflip_')) && !k.endsWith('_'+getTodayKey())) localStorage.removeItem(k);
+  });
   const saved=localStorage.getItem(key);
   if(saved){
     try{ S.dailyCard=JSON.parse(saved); }catch(e){ S.dailyCard=pickCard(); }
@@ -3271,11 +3306,20 @@ function initDaily() {
 
   initCrystal();
   renderLib();
+
+  // 今天已翻過 → 直接顯示結果，不必再翻一次
+  if(localStorage.getItem('arcana_dflip_'+getTodayKey())==='1'){
+    const el=document.getElementById('dailyCard');
+    el.style.transition='none';
+    flipDailyCard(true);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.style.transition=''; }));
+  }
 }
 
-function flipDailyCard() {
+function flipDailyCard(restoring=false) {
   if (S.dailyFlipped) return;
   S.dailyFlipped=true;
+  localStorage.setItem('arcana_dflip_'+getTodayKey(),'1');
   const el=document.getElementById('dailyCard');
   el.classList.add(S.dailyCard.reversed?'reversed':'flipped');
   document.getElementById('dHint').style.display='none';
@@ -3285,6 +3329,7 @@ function flipDailyCard() {
   document.getElementById('dArt').textContent=S.dailyCard.art;
   document.getElementById('dName').textContent=S.dailyCard.reversed?`${S.dailyCard.name}（逆位）`:S.dailyCard.name;
 
+  if(restoring){ showDailyInterp(); return; }
   setTimeout(()=>{
     el.classList.add('shimmer');
     showDailyInterp();
@@ -3349,23 +3394,93 @@ function startSpread() {
   const sp=SPREADS[S.selectedSpread];
   document.getElementById('spreadSetup').style.display='none';
   document.getElementById('spreadResults').style.display='block';
+  document.getElementById('spreadDoneArea').style.display='none';
+  document.getElementById('spreadCardArea').innerHTML='';
+  if(S.lastAIEntryId) S.lastAIEntryId.spread=null;
+  if(S.lastReading) S.lastReading.spread=null;
 
   // Show shuffle
   const so=document.getElementById('shuffleOverlay');
   so.classList.add('active');
   setTimeout(()=>so.classList.remove('active'),1800);
 
-  if(S.lastAIEntryId) S.lastAIEntryId.spread=null;
-  if(S.lastReading) S.lastReading.spread=null;
   setTimeout(()=>{
-    // Draw cards
-    const used=[];
+    // 洗好的整副牌（每張先決定正逆位），等使用者親手挑選
+    const deck=DB.map(c=>({...c, reversed:Math.random()<0.25}));
+    for(let i=deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+    S.pickDeck=deck;
     S.spreadCards=[];
-    for(let i=0;i<sp.count;i++){
-      const c=pickCard(used); used.push(c.id); S.spreadCards.push(c);
-    }
-    renderSpreadCards();
+    renderPicker();
   },1900);
+}
+
+function renderPicker() {
+  const sp=SPREADS[S.selectedSpread];
+  const q=(document.getElementById('spreadQ')?.value||'').trim();
+  const area=document.getElementById('spreadCardArea');
+  area.innerHTML=`
+    <div class="pick-head">
+      <div class="pick-title">${escHTML(sp.name)} · 親手抽牌</div>
+      <div class="pick-now" id="pickNow"></div>
+      <div class="pick-sub">${q?`默念：「${escHTML(q)}」，憑直覺點選`:'靜心默念你的問題，憑直覺點選'}</div>
+    </div>
+    <div class="pick-slots" id="pickSlots">
+      ${sp.pos.map((p,i)=>`<div class="pick-slot" id="pslot${i}"><div class="ps-card"></div><div class="ps-lbl">${i+1}. ${escHTML(p)}</div></div>`).join('')}
+    </div>
+    <div class="pick-deck" id="pickDeck">
+      ${S.pickDeck.map((c,i)=>`<div class="pick-card" style="animation-delay:${Math.min(i*8,500)}ms" onclick="pickFromDeck(${i},this)"></div>`).join('')}
+    </div>
+    <div class="pick-actions">
+      <button class="btn-s" onclick="autoPickRest()">✦ 隨機替我抽完</button>
+      <button class="btn-s" onclick="resetSpread()">取消</button>
+    </div>`;
+  updatePickerState();
+}
+
+function updatePickerState() {
+  const sp=SPREADS[S.selectedSpread];
+  const n=S.spreadCards.length;
+  sp.pos.forEach((_,i)=>{
+    const el=document.getElementById('pslot'+i); if(!el) return;
+    el.classList.toggle('done', i<n);
+    el.classList.toggle('cur', i===n);
+  });
+  const now=document.getElementById('pickNow');
+  if(now) now.innerHTML = n<sp.count
+    ? `請選第 <b>${n+1}</b> 張 · <b>${escHTML(sp.pos[n])}</b>（${n}/${sp.count}）`
+    : '牌已選定，正在揭示…';
+}
+
+function pickFromDeck(idx, el) {
+  const sp=SPREADS[S.selectedSpread];
+  if(S.spreadCards.length>=sp.count || el.classList.contains('taken')) return;
+  el.classList.add('taken');
+  S.spreadCards.push(S.pickDeck[idx]);
+  if(navigator.vibrate) try{ navigator.vibrate(12); }catch(e){}
+  updatePickerState();
+  if(S.spreadCards.length===sp.count) finishPicking();
+}
+
+function autoPickRest() {
+  const sp=SPREADS[S.selectedSpread];
+  const els=[...document.querySelectorAll('#pickDeck .pick-card:not(.taken)')];
+  const need=sp.count-S.spreadCards.length;
+  for(let k=0;k<need && els.length;k++){
+    const r=els.splice(Math.floor(Math.random()*els.length),1)[0];
+    const idx=[...r.parentNode.children].indexOf(r);
+    r.classList.add('taken');
+    S.spreadCards.push(S.pickDeck[idx]);
+  }
+  updatePickerState();
+  finishPicking();
+}
+
+function finishPicking() {
+  setTimeout(()=>{
+    renderSpreadCards();
+    document.getElementById('spreadDoneArea').style.display='block';
+    document.getElementById('spreadCardArea').scrollIntoView({behavior:'smooth',block:'start'});
+  },650);
 }
 
 function renderSpreadCards() {
@@ -3460,6 +3575,7 @@ function toggleSI(header) {
 
 function resetSpread() {
   S.spreadCards=[];
+  S.pickDeck=null;
   S.selectedCategory='general';
   S.currentQuestion='';
   document.getElementById('spreadSetup').style.display='block';
