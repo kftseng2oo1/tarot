@@ -3314,6 +3314,8 @@ function showDailyInterp() {
 
 function resetDaily() {
   S.dailyFlipped=false;
+  if(S.lastAIEntryId) S.lastAIEntryId.daily=null;
+  if(S.lastReading) S.lastReading.daily=null;
   S.dailyCard=pickCard();
   const key='arcana_daily_'+getTodayKey();
   localStorage.setItem(key,JSON.stringify(S.dailyCard));
@@ -3353,6 +3355,8 @@ function startSpread() {
   so.classList.add('active');
   setTimeout(()=>so.classList.remove('active'),1800);
 
+  if(S.lastAIEntryId) S.lastAIEntryId.spread=null;
+  if(S.lastReading) S.lastReading.spread=null;
   setTimeout(()=>{
     // Draw cards
     const used=[];
@@ -3623,6 +3627,8 @@ function applyInline(text) {
 
 
 
+const AI_SYSTEM_PROMPT = '你是一位深諳塔羅、五行、榮格心理學的解讀大師。用繁體中文回答，語氣溫柔而有詩意，如宇宙透過牌卡低語。';
+
 // ── 主要 AI 呼叫函式 ──────────────────────────────────────────
 async function getAI(type) {
   const btnId = type==='daily' ? 'dAIBtn' : 'sAIBtn';
@@ -3661,7 +3667,7 @@ async function getAI(type) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
         max_tokens: type === 'daily' ? 800 : 2000,
-        system: '你是一位深諳塔羅、五行、榮格心理學的解讀大師。用繁體中文回答，語氣溫柔而有詩意，如宇宙透過牌卡低語。',
+        system: AI_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -3721,7 +3727,14 @@ async function getAI(type) {
       </div>`;
     // 儲存原始解讀供分享用
     S.lastReading = S.lastReading || {};
-    S.lastReading[type] = { raw, cards: type==='daily'?[S.dailyCard]:S.spreadCards };
+    S.lastReading[type] = {
+      raw, cards: type==='daily'?[S.dailyCard]:S.spreadCards,
+      // 多輪對話紀錄，追問時整段帶給 AI，維持同一位「智者」的脈絡
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: raw },
+      ],
+    };
 
     btn.innerHTML = '✦ 已解讀';
 
@@ -3798,22 +3811,33 @@ function initStyleBtns() {
 // 功能 1：AI 解讀自動存入日誌
 // ═══════════════════════════════════════════════════════════════
 function saveReadingToJournal(type, raw, cards) {
-  const cardNames = cards.map(c=>`${c.name}${c.reversed?'↓':''}`).join('、');
-  const entry = {
-    id: Date.now(),
-    date: new Date().toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'short'}),
-    time: new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),
-    type: type === 'daily' ? '每日一牌' : SPREADS[S.selectedSpread]?.name || '牌陣',
-    cards: cardNames,
-    question: type==='spread' ? (document.getElementById('spreadQ')?.value||'') : '',
-    style: READING_STYLES[S.readingStyle]?.label || '詩意靈性派',
-    moon: getMoonPhase().name,
-    solar: getSolarTerm().name,
-    reading: raw,
-    mood: S.selectedMood || '🌙',
-  };
-  S.journal.unshift(entry);
-  localStorage.setItem('tarotJournal', JSON.stringify(S.journal.slice(0,100)));
+  loadJournal();
+  const sid = S.lastAIEntryId?.[type];
+  const existing = sid && S.journal.find(e=>e.id===sid);
+  if (existing) {
+    // 同一次占卜重新解讀：覆蓋解讀內容，不重複新增
+    existing.reading = raw;
+    existing.style = READING_STYLES[S.readingStyle]?.label || '詩意靈性派';
+  } else {
+    const entry = {
+      id: Date.now(),
+      date: new Date().toLocaleString('zh-TW'),
+      type,
+      spreadName: type === 'daily' ? '每日一牌' : (SPREADS[S.selectedSpread]?.name || '牌陣占卜'),
+      mood: '🌙',
+      cards: cards.map(c=>({name:c.name, art:c.art, reversed:!!c.reversed})),
+      question: type==='spread' ? (document.getElementById('spreadQ')?.value||'') : '',
+      note: '',
+      style: READING_STYLES[S.readingStyle]?.label || '詩意靈性派',
+      moon: getMoonPhase().name,
+      solar: getSolarTerm().name,
+      reading: raw,
+    };
+    S.journal.unshift(entry);
+    S.lastAIEntryId = S.lastAIEntryId || {};
+    S.lastAIEntryId[type] = entry.id;
+  }
+  saveJournalLS();
   showToast('✦ 解讀已存入日誌');
 }
 
@@ -3834,36 +3858,51 @@ async function setupDailyNotification() {
   localStorage.setItem('tarot_notif', 'true');
   localStorage.setItem('tarot_notif_hour', '08');
 
-  // 計算距下次早上 8 點的毫秒數
-  const now = new Date();
-  const next = new Date();
-  next.setHours(8,0,0,0);
-  if (now.getHours() >= 8) next.setDate(next.getDate()+1);
-  const delay = next - now;
+  scheduleDailyNotif();
 
-  // 設定首次通知
-  setTimeout(() => {
-    sendDailyNotif();
-    setInterval(sendDailyNotif, 24*60*60*1000);
-  }, delay);
-
-  showToast(`🔔 每日提醒已開啟（每天早上 8:00）`);
+  // 注意：網頁計時器只在 App 開著（或留在背景未被系統關閉）時有效
+  showToast(`🔔 每日提醒已開啟（早上 8:00，需 App 留在背景）`, 3200);
   updateNotifBtn();
 }
 
-function sendDailyNotif() {
+// 單一計時器：避免重複排程造成一次跳多則通知
+function scheduleDailyNotif() {
+  clearTimeout(S.notifTimer);
   if (!S.notifEnabled) return;
+  const now = new Date(), next = new Date();
+  next.setHours(8,0,0,0);
+  if (now >= next) next.setDate(next.getDate()+1);
+  S.notifTimer = setTimeout(() => { sendDailyNotif(); scheduleDailyNotif(); }, next - now);
+}
+
+async function sendDailyNotif() {
+  if (!S.notifEnabled) return;
+  // 今天已提醒過就不重發
+  const k = 'tarot_notif_last';
+  if (localStorage.getItem(k) === getTodayKey()) return;
+  localStorage.setItem(k, getTodayKey());
   const msgs = [
     '🔮 今日牌卡正在等待你的翻閱',
     '✦ 宇宙有話對你說，今天的塔羅準備好了',
     '🌙 每日一牌：讓智慧引導你的一天',
     '⟁ 今日能量已就位，點開來看看',
   ];
-  new Notification('塔羅秘境 ARCANA', {
+  const title = '塔羅秘境 ARCANA';
+  const opts = {
     body: msgs[Math.floor(Math.random()*msgs.length)],
-    icon: 'icons/icon-192.png',
-    badge: 'icons/icon-72.png',
-  });
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    tag: 'tarot-daily',
+  };
+  // iOS PWA 與 Android Chrome 不支援 new Notification()，須透過 Service Worker 顯示
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, opts);
+      return;
+    }
+  } catch (e) { console.warn('SW notification failed', e); }
+  try { new Notification(title, opts); } catch (e) { console.warn('Notification failed', e); }
 }
 
 function updateNotifBtn() {
@@ -3883,6 +3922,7 @@ function updateNotifBtn() {
 function toggleNotification() {
   if (S.notifEnabled) {
     S.notifEnabled = false;
+    clearTimeout(S.notifTimer);
     localStorage.setItem('tarot_notif','false');
     showToast('🔕 每日提醒已關閉');
     updateNotifBtn();
@@ -3904,14 +3944,13 @@ function applyScenario(id, title, question, catKey) {
 
   // 選擇對應牌陣（Celtic Cross 或 三牌陣）
   const spreadMap = {
-    'love3': 'threeCard', 'career': 'celtic', 'month': 'threeCard',
-    'invest': 'threeCard', 'relation': 'celtic', 'heal': 'threeCard'
+    'love3': 'trinity', 'career': 'celtic', 'month': 'trinity',
+    'invest': 'trinity', 'relation': 'relationship', 'heal': 'trinity'
   };
-  const spreadKey = spreadMap[id] || 'threeCard';
-  // 選擇牌陣
-  document.querySelectorAll('.sopt').forEach(b => b.classList.remove('active'));
-  const soptBtn = document.querySelector(`.sopt[data-spread="${spreadKey}"]`);
-  if (soptBtn) { soptBtn.classList.add('active'); S.selectedSpread = spreadKey; }
+  const spreadKey = SPREADS[spreadMap[id]] ? spreadMap[id] : 'trinity';
+  // 選擇牌陣（沿用 selSpread，與手動點選行為一致）
+  const soptBtn = document.getElementById(`so-${spreadKey}`);
+  if (soptBtn) selSpread(spreadKey, soptBtn);
 
   // 視覺提示
   const msg = document.createElement('div');
@@ -3938,30 +3977,23 @@ async function sendFollowup(type) {
   if (!question) return;
   if (!WORKER_URL) { showWorkerSetup(type); return; }
 
-  // 取得原始解讀內容
-  const prevReading = S.lastReading?.[type]?.raw || '';
-  const cards = type==='daily' ? [S.dailyCard] : S.spreadCards;
-  const cardsDesc = cards.map(c=>`${c.name}（${c.reversed?'逆位':'正位'}）`).join('、');
+  const last = S.lastReading?.[type];
+  if (!last?.messages) { showToast('請先完成 AI 深度分析'); return; }
 
   // Loading 狀態
   const loadId = 'fu_loading_' + Date.now();
   histEl.insertAdjacentHTML('beforeend', `
-    <div class="followup-q">❓ ${question}</div>
+    <div class="followup-q">❓ ${escHTML(question)}</div>
     <div class="followup-a" id="${loadId}">
       <span style="opacity:.5;font-size:12px;">智者正在回應…</span>
     </div>`);
   inputEl.value = '';
   inputEl.disabled = true;
 
-  const followupPrompt = `你之前的塔羅解讀內容如下：
----
-${prevReading}
----
-牌卡：${cardsDesc}
-
-使用者的追問：「${question}」
-
-請針對這個追問，結合牌卡訊息給出簡潔的回應（150字以內）。語氣溫柔、有洞見，如智者的低語。請用繁體中文。`;
+  const messages = [
+    ...last.messages,
+    { role: 'user', content: `${question}\n\n（請結合剛才的牌卡訊息，簡潔回應，約 150 字以內。）` },
+  ];
 
   try {
     const res = await fetch(WORKER_URL, {
@@ -3969,18 +4001,31 @@ ${prevReading}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
-        max_tokens: 300,
-        messages: [{ role:'user', content: followupPrompt }],
+        max_tokens: 400,
+        system: AI_SYSTEM_PROMPT,
+        messages,
       }),
     });
     const rawText = await res.text();
-    const data = JSON.parse(rawText);
+    let data;
+    try { data = JSON.parse(rawText); }
+    catch (e) { throw new Error(`Worker 回傳非預期格式（HTTP ${res.status}）`); }
+    if (!res.ok || data.error) {
+      if (res.status === 429) throw new Error('API 使用量已達上限，請稍後再試');
+      throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+    }
     const answer = data.content?.[0]?.text || '';
+    if (!answer) throw new Error('AI 回傳空白內容，請重試');
     document.getElementById(loadId).innerHTML = renderMarkdown(answer);
-    // 更新存檔供後續追問參考
-    if (S.lastReading?.[type]) S.lastReading[type].raw += `\n\n[追問：${question}]\n${answer}`;
+    // 只有成功才寫入對話紀錄
+    last.messages = [...messages, { role: 'assistant', content: answer }];
+    last.raw += `\n\n[追問：${question}]\n${answer}`;
+    // 同步更新日誌中的這筆解讀
+    const sid = S.lastAIEntryId?.[type];
+    if (sid) { loadJournal(); const e = S.journal.find(x=>x.id===sid); if (e) { e.reading = last.raw; saveJournalLS(); } }
   } catch(e) {
-    document.getElementById(loadId).innerHTML = `<span style="color:#e07070;">回應失敗：${e.message}</span>`;
+    document.getElementById(loadId).innerHTML = `<span style="color:#e07070;">回應失敗：${escHTML(e.message)}</span>`;
+    inputEl.value = question; // 失敗時保留問題，方便重送
   }
   inputEl.disabled = false;
   inputEl.focus();
@@ -4386,11 +4431,43 @@ function speechStop(type){ speechSynthesis.cancel(); const b=document.getElement
 // ═══════════════════════════════════════════════════════════════
 // JOURNAL
 // ═══════════════════════════════════════════════════════════════
+function escHTML(t){
+  return String(t??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+// 舊版 AI 解讀存在 tarotJournal（格式不同），一次性轉入 arcana_journal
+function migrateOldJournal(){
+  const old=localStorage.getItem('tarotJournal');
+  if(!old) return;
+  try{
+    const oldList=JSON.parse(old)||[];
+    let cur=[];
+    try{ cur=JSON.parse(localStorage.getItem('arcana_journal')||'[]'); }catch(e){}
+    const ids=new Set(cur.map(e=>e.id));
+    oldList.forEach(o=>{
+      if(!o||ids.has(o.id)) return;
+      const names=typeof o.cards==='string'?o.cards.split('、').filter(Boolean):[];
+      cur.push({
+        id:o.id, date:[o.date,o.time].filter(Boolean).join(' '),
+        type:o.type==='每日一牌'?'daily':'spread',
+        spreadName:o.type||'牌陣占卜', mood:o.mood||'🌙',
+        cards:names.map(n=>{
+          const rev=n.endsWith('↓'); const name=rev?n.slice(0,-1):n;
+          const d=DB.find(c=>c.name===name);
+          return {name, art:d?d.art:'🃏', reversed:rev};
+        }),
+        question:o.question||'', note:'', style:o.style, moon:o.moon, solar:o.solar, reading:o.reading||''
+      });
+    });
+    cur.sort((a,b)=>b.id-a.id);
+    localStorage.setItem('arcana_journal',JSON.stringify(cur.slice(0,300)));
+    localStorage.removeItem('tarotJournal');
+  }catch(e){ console.warn('migrateOldJournal',e); }
+}
 function loadJournal(){
   try{ S.journal=JSON.parse(localStorage.getItem('arcana_journal')||'[]'); }
   catch(e){ S.journal=[]; }
 }
-function saveJournalLS(){ localStorage.setItem('arcana_journal',JSON.stringify(S.journal)); }
+function saveJournalLS(){ localStorage.setItem('arcana_journal',JSON.stringify(S.journal.slice(0,300))); }
 
 function openSaveModal(ctx){
   S.saveContext=ctx;
@@ -4414,15 +4491,24 @@ function confirmSave(){
   if(S.saveContext==='daily'){ cards=[S.dailyCard]; spreadName='每日一牌'; }
   else { cards=S.spreadCards; spreadName=SPREADS[sp]?.name||'牌陣占卜'; }
   if(!cards.length){ showToast('沒有牌卡可儲存'); return; }
-  const entry={
-    id:Date.now(), date:new Date().toLocaleString('zh-TW'),
-    type:S.saveContext, spreadName, mood:S.selectedMood,
-    cards:cards.map(c=>({name:c.name,art:c.art,reversed:c.reversed})),
-    question:document.getElementById('spreadQ')?.value||'',
-    note
-  };
   loadJournal();
-  S.journal.unshift(entry);
+  // 這次占卜若已有 AI 解讀自動存檔，就把心情與筆記合併進去，不另開一筆
+  const sid=S.lastAIEntryId?.[S.saveContext];
+  const existing=sid && S.journal.find(e=>e.id===sid);
+  if(existing){
+    existing.mood=S.selectedMood; existing.note=note;
+  } else {
+    const entry={
+      id:Date.now(), date:new Date().toLocaleString('zh-TW'),
+      type:S.saveContext, spreadName, mood:S.selectedMood,
+      cards:cards.map(c=>({name:c.name,art:c.art,reversed:!!c.reversed})),
+      question:S.saveContext==='spread'?(document.getElementById('spreadQ')?.value||''):'',
+      note, reading:S.lastReading?.[S.saveContext]?.raw||''
+    };
+    S.journal.unshift(entry);
+    S.lastAIEntryId=S.lastAIEntryId||{};
+    S.lastAIEntryId[S.saveContext]=entry.id;
+  }
   saveJournalLS();
   closeModal('saveModal');
   showToast('✦ 已儲存至占卜日誌');
@@ -4454,12 +4540,16 @@ function renderJournal(){
     <div class="je" style="margin-bottom:12px;">
       <button class="je-del" onclick="delJEntry(${e.id},event)">✕</button>
       <div class="je-hdr">
-        <div><div class="je-date">${e.date}</div><div class="je-spread">${e.spreadName}</div></div>
-        <div class="je-mood">${e.mood}</div>
+        <div><div class="je-date">${escHTML(e.date)}</div><div class="je-spread">${escHTML(e.spreadName)}${e.style?` · ${escHTML(e.style)}`:''}</div></div>
+        <div class="je-mood">${escHTML(e.mood)}</div>
       </div>
-      <div class="je-cards">${e.cards.map(c=>`<span class="je-tag">${c.art} ${c.name}${c.reversed?'↓':''}</span>`).join('')}</div>
-      ${e.question?`<div class="je-q">「${e.question}」</div>`:''}
-      ${e.note?`<div class="je-note show">${e.note}</div>`:''}
+      <div class="je-cards">${(Array.isArray(e.cards)?e.cards:[]).map(c=>`<span class="je-tag">${escHTML(c.art)} ${escHTML(c.name)}${c.reversed?'↓':''}</span>`).join('')}</div>
+      ${e.question?`<div class="je-q">「${escHTML(e.question)}」</div>`:''}
+      ${e.note?`<div class="je-note show">${escHTML(e.note)}</div>`:''}
+      ${e.reading?`<details class="je-reading" style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:12px;color:var(--gold);opacity:.75;letter-spacing:.1em;">✦ 查看 AI 解讀</summary>
+        <div class="ai-resp-body" style="margin-top:8px;font-size:14px;line-height:1.8;">${renderMarkdown(escHTML(e.reading))}</div>
+      </details>`:''}
     </div>`).join('');
 }
 
@@ -4553,16 +4643,14 @@ window.onerror = function(msg, src, line, col, err) {
   console.error('Global error:', msg, 'line:', line, err);
 };
 
+try { migrateOldJournal(); } catch(e) { console.error('migrate error:', e); }
 try { initDaily(); } catch(e) { console.error('initDaily error:', e); }
 try { renderLib(); } catch(e) { console.error('renderLib error:', e); }
 try { initStyleBtns(); } catch(e) { console.error('initStyleBtns error:', e); }
 try { updateNotifBtn(); } catch(e) { console.error('updateNotifBtn error:', e); }
 // 如果已開啟通知，重新設定定時器
 if (S.notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
-  const now = new Date(), next = new Date();
-  next.setHours(8,0,0,0);
-  if (now.getHours() >= 8) next.setDate(next.getDate()+1);
-  setTimeout(() => { sendDailyNotif(); setInterval(sendDailyNotif, 24*60*60*1000); }, next - now);
+  scheduleDailyNotif();
 }
 
 // 確保按鈕狀態正確
