@@ -234,13 +234,39 @@ border:2px solid rgba(201,168,76,.48);animation:cardPop .55s cubic-bezier(.34,1.
 text-align:center;padding:0 4px;letter-spacing:.04em;line-height:1.3;}
 .sc-lbl{font-family:'Cinzel',serif;font-size:9px;color:var(--silver);opacity:.45;
 letter-spacing:.12em;text-transform:uppercase;max-width:90px;margin:0 auto;}
+.celtic-wrap{display:flex;justify-content:center;align-items:center;gap:14px;margin:18px auto 22px;max-width:520px;}
+.celtic-cross{display:grid;grid-template-columns:repeat(3,auto);grid-template-rows:repeat(3,auto);gap:8px 10px;align-items:center;justify-items:center;}
+.celtic-staff{display:flex;flex-direction:column;gap:8px;padding-left:12px;border-left:1px solid rgba(201,168,76,.15);}
+.cc-slot{text-align:center;}
+.cc-card{width:62px;height:104px;border-radius:7px;position:relative;margin:0 auto 3px;
+background:linear-gradient(160deg,#1f1035,#0f0820);border:1.5px solid rgba(201,168,76,.48);
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+animation:cardPop .55s cubic-bezier(.34,1.56,.64,1) both;}
+.celtic-staff .cc-card{width:52px;height:84px;}
+.cc-art{font-size:24px;filter:drop-shadow(0 0 6px rgba(201,168,76,.3));}
+.celtic-staff .cc-art{font-size:20px;}
+.cc-name{font-size:9px;color:var(--gold-light);text-align:center;line-height:1.2;padding:0 2px;}
+.cc-n{position:absolute;top:3px;left:5px;font-family:'Cinzel',serif;font-size:8px;color:var(--gold);opacity:.6;}
+.cc-lbl{font-size:9.5px;color:var(--silver);opacity:.6;line-height:1.25;max-width:80px;margin:0 auto;}
+.cc-center .cc-lbl{max-width:120px;}
+.cc-stack{position:relative;width:104px;height:144px;display:flex;align-items:center;justify-content:center;}
+.cc-stack .cc-card{position:absolute;margin:0;}
+/* 1 號牌內容靠上，2 號牌橫跨在下半部，兩張都看得到 */
+.cc-stack .cc-card:first-child{justify-content:flex-start;padding-top:12px;}
+.cc-stack .cc-card:first-child .cc-art{font-size:18px;}
+.cc-stack .cc-card:first-child .cc-name{order:-1;margin-bottom:2px;}
+.cc-stack .cc-cross{transform:translateY(32px) rotate(90deg);background:linear-gradient(160deg,rgba(40,20,70,.96),rgba(15,8,32,.96));
+border-color:rgba(201,168,76,.7);z-index:2;animation:ccCross .6s ease both;}
+@keyframes ccCross{from{opacity:0;transform:translateY(32px) rotate(90deg) scale(.7)}to{opacity:1;transform:translateY(32px) rotate(90deg)}}
+@media(max-width:380px){.cc-card{width:54px;height:92px;}.cc-stack{width:94px;height:134px;}
+.celtic-staff .cc-card{width:46px;height:76px;}.celtic-wrap{gap:8px;}.celtic-cross{gap:6px;}}
 .pick-head{text-align:center;margin:8px 0 6px;}
 .pick-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.25em;color:var(--gold);opacity:.7;}
 .pick-now{font-size:16px;color:var(--cream);margin-top:6px;}
 .pick-now b{color:var(--gold-light);font-weight:600;}
 .pick-sub{font-size:12px;color:var(--silver);opacity:.5;margin-top:4px;font-style:italic;}
 .pick-slots{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:14px 0 6px;}
-.pick-slot{width:44px;text-align:center;}
+.pick-slot{width:50px;text-align:center;}
 .pick-slot .ps-card{width:44px;height:74px;border-radius:5px;border:1.5px dashed rgba(201,168,76,.25);
 margin:0 auto 4px;transition:all .3s;}
 .pick-slot.cur .ps-card{border-color:rgba(201,168,76,.7);box-shadow:0 0 12px rgba(201,168,76,.35);}
@@ -915,7 +941,7 @@ color:var(--gold);opacity:.55;margin-bottom:8px;}
         </div>
         <div class="sopt" onclick="selSpread('celtic',this)" id="so-celtic">
           <div class="sopt-icon">✦</div><div class="sopt-name">賽爾特十字</div>
-          <div class="sopt-desc">六牌深度全局解析</div><span class="sopt-badge badge-adv">進階</span>
+          <div class="sopt-desc">十牌深度全局解析</div><span class="sopt-badge badge-adv">進階</span>
         </div>
         <div class="sopt" onclick="selSpread('hexagram',this)" id="so-hexagram">
           <div class="sopt-icon">✡</div><div class="sopt-name">六芒星牌陣</div>
@@ -1654,7 +1680,7 @@ class QuestionParser {
     // 每張牌針對問題的解讀
     const cardReadings = cards.map((c, i) => {
       const pos = spreadPositions[i] || `第${i+1}張`;
-      const posHint = frame.posHint[pos] || '';
+      const posHint = frame.posHint[pos] || POS_HINT[pos] || '';
       const interp = c.reversed ? c.rev : c.up;
       const posColor = wxInfo.color || 'var(--gold)';
 
@@ -3141,11 +3167,21 @@ const DB = [
 // ═══════════════════════════════════════════════════════════════
 // SPREAD DEFINITIONS
 // ═══════════════════════════════════════════════════════════════
+// 牌位通用說明（問題類別沒有專屬說明時使用）
+const POS_HINT = {
+  '現狀':'問題的核心，你目前所處的狀態', '挑戰':'橫在眼前的阻礙或需要面對的課題',
+  '根基':'潛意識裡的深層原因與根源', '過去':'剛過去、正在淡出的影響',
+  '目標':'你意識上追求的方向或最好的可能', '近期':'接下來不久會發生的事',
+  '自我':'你對這件事的態度與內在狀態', '外在環境':'身邊的人、環境對你的影響',
+  '希望與恐懼':'你心中期待又害怕的部分', '結果':'照目前走向發展的最終結果',
+};
+
 const SPREADS = {
   single:       { name:'單牌占卜',   count:1, pos:['指引'] },
   trinity:      { name:'聖三角',     count:3, pos:['過去','現在','未來'] },
   choice:       { name:'二選一',     count:3, pos:['選項A','選項B','建議'] },
-  celtic:       { name:'賽爾特十字', count:6, pos:['現狀','挑戰','根基','近期','自我','結果'] },
+  celtic:       { name:'賽爾特十字', count:10, layout:'celtic',
+                  pos:['現狀','挑戰','根基','過去','目標','近期','自我','外在環境','希望與恐懼','結果'] },
   hexagram:     { name:'六芒星',     count:7, pos:['現狀','過去','未來','建議','外部影響','希望/恐懼','結果'] },
   relationship: { name:'關係牌陣',   count:5, pos:['你的能量','對方能量','關係現狀','挑戰','建議'] },
 };
@@ -3425,7 +3461,7 @@ function renderPicker() {
       <div class="pick-sub">${q?`默念：「${escHTML(q)}」，憑直覺點選`:'靜心默念你的問題，憑直覺點選'}</div>
     </div>
     <div class="pick-slots" id="pickSlots">
-      ${sp.pos.map((p,i)=>`<div class="pick-slot" id="pslot${i}"><div class="ps-card"></div><div class="ps-lbl">${i+1}. ${escHTML(p)}</div></div>`).join('')}
+      ${sp.pos.map((p,i)=>`<div class="pick-slot" id="pslot${i}"><div class="ps-card"></div><div class="ps-lbl">${i+1}.&nbsp;${escHTML(p)}</div></div>`).join('')}
     </div>
     <div class="pick-deck" id="pickDeck">
       ${S.pickDeck.map((c,i)=>`<div class="pick-card" style="animation-delay:${Math.min(i*8,500)}ms" onclick="pickFromDeck(${i},this)"></div>`).join('')}
@@ -3483,11 +3519,41 @@ function finishPicking() {
   },650);
 }
 
+// 賽爾特十字：左側十字（1 現狀、2 橫跨的挑戰、3 根基、4 過去、5 目標、6 近期）＋右側權杖列（7→10 由下往上）
+function buildCelticLayout(cards, sp) {
+  const cell=(i,extra='')=>{
+    const c=cards[i]; if(!c) return '';
+    return `<div class="cc-card ${extra}" style="animation-delay:${i*0.1}s" title="${i+1}. ${sp.pos[i]}">
+      <span class="cc-n">${i+1}</span>
+      <div class="cc-art">${c.art}</div>
+      <div class="cc-name">${c.name}${c.reversed?'↓':''}</div>
+    </div>`;
+  };
+  const lbl=(i)=>`<div class="cc-lbl">${i+1}. ${sp.pos[i]}</div>`;
+  return `<div class="celtic-wrap">
+    <div class="celtic-cross">
+      <div class="cc-slot" style="grid-column:2;grid-row:1;">${cell(4)}${lbl(4)}</div>
+      <div class="cc-slot" style="grid-column:1;grid-row:2;">${cell(3)}${lbl(3)}</div>
+      <div class="cc-slot cc-center" style="grid-column:2;grid-row:2;">
+        <div class="cc-stack">${cell(0)}${cell(1,'cc-cross')}</div>
+        <div class="cc-lbl">1. ${sp.pos[0]} ／ 2. ${sp.pos[1]}</div>
+      </div>
+      <div class="cc-slot" style="grid-column:3;grid-row:2;">${cell(5)}${lbl(5)}</div>
+      <div class="cc-slot" style="grid-column:2;grid-row:3;">${cell(2)}${lbl(2)}</div>
+    </div>
+    <div class="celtic-staff">
+      ${[9,8,7,6].map(i=>`<div class="cc-slot">${cell(i)}${lbl(i)}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function renderSpreadCards() {
   const sp=SPREADS[S.selectedSpread];
   const area=document.getElementById('spreadCardArea');
   const interpArea=document.getElementById('spreadInterpArea');
 
+  if (sp.layout==='celtic') { area.innerHTML=buildCelticLayout(S.spreadCards, sp); }
+  else {
   // Cards row
   let html=`<div class="spread-cards-row">`;
   S.spreadCards.forEach((c,i)=>{
@@ -3501,6 +3567,7 @@ function renderSpreadCards() {
   });
   html+=`</div>`;
   area.innerHTML=html;
+  }
 
   // Analysis
   const engine=new TarotAnalysisEngine(S.spreadCards);
@@ -3551,7 +3618,7 @@ function renderSpreadCards() {
         <div class="si-art">${c.art}</div>
         <div>
           <div class="si-title">${c.name}${c.reversed?' · 逆位':''}</div>
-          <div class="si-pos">${sp.pos[i]||''}</div>
+          <div class="si-pos">${sp.pos[i]||''}${sp.layout==='celtic'&&POS_HINT[sp.pos[i]]?` · ${POS_HINT[sp.pos[i]]}`:''}</div>
         </div>
         <div class="si-toggle">▼</div>
       </div>
@@ -3782,7 +3849,7 @@ async function getAI(type) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
-        max_tokens: type === 'daily' ? 800 : 2000,
+        max_tokens: type === 'daily' ? 800 : (SPREADS[S.selectedSpread]?.count >= 10 ? 3200 : 2000),
         system: AI_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: prompt }],
       }),
