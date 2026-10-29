@@ -1,21 +1,22 @@
 {
   "name": "AI秘境塔羅",
   "short_name": "AI秘境塔羅",
-  "description": "",
+  "description": "每日一牌、親手抽牌的牌陣占卜，搭配 AI 深度解讀與占卜日誌",
   "start_url": "/tarot/",
   "scope": "/tarot/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#1a73e8",
-  "background_color": "#ffffff",
+  "theme_color": "#1a0b33",
+  "background_color": "#0a0612",
   "lang": "zh-TW",
   "categories": [
-    "utilities"
+    "lifestyle",
+    "entertainment"
   ],
   "shortcuts": [
     {
       "name": "開啟 AI秘境塔羅",
-      "short_name": "AI秘境塔羅",
+      "short_name": "每日一牌",
       "url": "/tarot/",
       "icons": [
         {
@@ -48,7 +49,7 @@
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ]
 }
