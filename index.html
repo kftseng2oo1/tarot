@@ -262,6 +262,39 @@ border-color:rgba(201,168,76,.7);z-index:2;animation:ccCross .6s ease both;}
 .celtic-staff .cc-card{width:46px;height:76px;}.celtic-wrap{gap:8px;}.celtic-cross{gap:6px;}}
 .stream-caret{display:inline-block;color:var(--gold);opacity:.7;animation:caretBlink 1s steps(2) infinite;margin-left:2px;}
 @keyframes caretBlink{50%{opacity:0}}
+.synth-box{margin:6px 0 18px;padding:18px 18px 8px;border-radius:12px;
+background:linear-gradient(160deg,rgba(43,21,80,.55),rgba(10,6,18,.8));border:1px solid rgba(201,168,76,.28);text-align:left;}
+.synth-title{font-family:'Cinzel',serif;font-size:12px;letter-spacing:.25em;color:var(--gold);text-align:center;margin-bottom:12px;}
+.sy-sec{display:flex;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,.06);}
+.sy-sec:first-of-type{border-top:none;}
+.sy-ic{flex:0 0 28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+font-size:13px;color:var(--gold);background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);font-family:'Cinzel',serif;}
+.sy-h{font-size:14px;color:var(--gold-light);font-weight:600;margin-bottom:3px;}
+.sy-b{font-size:13.5px;line-height:1.8;color:var(--cream);opacity:.85;}
+.sy-b b{color:var(--gold-light);font-weight:600;}
+.sy-mini{font-size:12px;opacity:.6;}
+.sum-card-wrap{margin:26px 0 8px;}
+.sum-card{max-width:360px;margin:0 auto;padding:26px 24px 20px;border-radius:20px;position:relative;text-align:center;
+background:linear-gradient(170deg,#2b1550 0%,#140a2a 60%,#0a0612 100%);
+border:2px solid var(--gold);box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 30px rgba(201,168,76,.15);}
+.sum-card::before{content:'';position:absolute;inset:9px;border:1px solid rgba(201,168,76,.35);border-radius:13px;pointer-events:none;}
+.sum-top{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.25em;color:var(--gold);opacity:.85;}
+.sum-q{font-size:13px;color:var(--cream);opacity:.6;font-style:italic;margin-top:8px;}
+.sum-title{font-size:34px;font-weight:700;color:#f3dc94;letter-spacing:.12em;margin-top:14px;text-shadow:0 0 18px rgba(201,168,76,.35);}
+.sum-sub{font-size:14px;color:var(--cream);opacity:.72;margin-top:4px;}
+.sum-meter{height:6px;border-radius:3px;background:rgba(255,255,255,.1);margin:14px 40px 4px;overflow:hidden;}
+.sum-meter div{height:100%;background:linear-gradient(90deg,#8f6b22,#f3dc94);border-radius:3px;}
+.sum-key{display:flex;align-items:center;justify-content:center;gap:14px;margin:18px 0 10px;}
+.sum-key-art{font-size:44px;filter:drop-shadow(0 0 10px rgba(201,168,76,.4));}
+.sum-key-lbl{font-size:11px;color:var(--gold);letter-spacing:.15em;text-align:left;}
+.sum-key-name{font-size:17px;color:var(--cream);font-weight:600;text-align:left;}
+.sum-line{font-size:14px;line-height:1.85;color:var(--cream);opacity:.88;margin:6px 0 12px;}
+.sum-acts{text-align:left;margin:0;padding:12px 10px 4px 30px;border-top:1px solid rgba(201,168,76,.25);}
+.sum-acts li{font-size:13.5px;line-height:1.75;color:var(--cream);margin-bottom:6px;}
+.sum-acts li::marker{color:var(--gold);font-weight:700;}
+.sum-elems{display:flex;justify-content:center;gap:14px;font-size:14px;color:var(--cream);margin-top:10px;}
+.sum-elems .off{opacity:.3;}
+.sum-foot{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.2em;color:var(--gold);opacity:.45;margin-top:12px;}
 .pick-head{text-align:center;margin:8px 0 6px;}
 .pick-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.25em;color:var(--gold);opacity:.7;}
 .pick-now{font-size:16px;color:var(--cream);margin-top:6px;}
@@ -1040,10 +1073,12 @@ color:var(--gold);opacity:.55;margin-bottom:8px;}
     <div id="spreadResults" style="display:none;animation:fadeUp .5s ease;">
       <div id="spreadCardArea"></div>
       <div id="spreadDoneArea">
+      <div id="spreadSynthArea"></div>
       <div id="spreadAnalysisArea"></div>
       <div id="detectNoticeArea"></div>
       <div id="spreadDeepArea"></div>
       <div id="spreadInterpArea"></div>
+      <div id="spreadSummaryArea"></div>
       <div class="action-bar" style="margin-top:18px;">
         <button class="ai-btn" id="sAIBtn" onclick="getAI('spread')">✦ 深度分析</button>
         <button class="btn-s" onclick="showWorkerSetup('spread')" title="設定 API Key">⚙</button>
@@ -3522,6 +3557,293 @@ function finishPicking() {
   },650);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 牌陣綜整 + 總結建議牌卡（依六種牌陣各自的解讀邏輯，規則式、離線可用）
+// ═══════════════════════════════════════════════════════════════
+// 每張牌正位的基本吉凶傾向（-1 困難 … +1 順利）
+const CARD_POLARITY = (() => {
+  const major = [.6,1,.5,1,.7,.4,1,1,1,.2,.8,.5,0,-.3,1,-1,-1,1,-.6,1,.9,1];
+  const suit = {
+    wands:     [1,.6,.8,1,-.4,1,.3,.8,0,-.6,.7,.6,.8,.8],
+    cups:      [1,1,1,-.3,-.8,.6,-.4,-.3,1,1,.7,.7,.8,.8],
+    swords:    [.6,-.3,-1,.1,-.7,.2,-.5,-.8,-1,-1,.3,.2,.4,.5],
+    pentacles: [1,.3,.8,-.1,-.9,.6,.3,.8,1,1,.7,.6,.8,.8],
+  };
+  const order = ['wands','cups','swords','pentacles'];
+  const map = {};
+  major.forEach((p,i)=>map[i]=p);
+  order.forEach((s,si)=>suit[s].forEach((p,i)=>map[22+si*14+i]=p));
+  return map;
+})();
+
+function cardTone(c) {
+  const p = CARD_POLARITY[c.id] ?? .4;
+  if (!c.reversed) return p;
+  if (p <= -.2) return Math.abs(p) * .4;   // 困難牌逆位：壓力減輕
+  if (p < .2)  return -.2;
+  return -p * .6;                          // 吉牌逆位：能量受阻
+}
+const cardWeight = c => c.type === 'major' ? 1.5 : 1;
+const firstSentence = t => (t||'').split('。')[0] + '。';
+const cardMeaning = c => firstSentence(c.reversed ? c.rev : c.up);
+const cardLabel = c => `${c.art} ${c.name}${c.reversed ? '（逆位）' : ''}`;
+const kw2 = c => c.kw.slice(0,2).join('、');
+
+function toneWord(t) {
+  if (t >= .6) return { w:'順遂', cls:'pos' };
+  if (t >= .2) return { w:'偏順', cls:'pos' };
+  if (t > -.2) return { w:'持平', cls:'neu' };
+  if (t > -.6) return { w:'受阻', cls:'neg' };
+  return { w:'困難', cls:'neg' };
+}
+
+const VERDICTS = [
+  { min: .55,  title:'順流而上', sub:'天時地利，放手去做',   line:'整體能量明亮順暢，這是把握機會、主動出擊的時刻。' },
+  { min: .2,   title:'穩中求進', sub:'方向正確，步步踏實',   line:'大方向是好的，只要穩住節奏、處理小阻礙，就能持續推進。' },
+  { min: -.2,  title:'轉折之間', sub:'局勢未定，關鍵在選擇', line:'正處在可上可下的轉折點，你此刻的選擇與心態會決定走向。' },
+  { min: -.55, title:'沉潛蓄力', sub:'暫緩腳步，先整理自己', line:'目前阻力較多，不宜硬闖；先修補、休息、累積，等待更好的時機。' },
+  { min: -9,   title:'破而後立', sub:'舊的結束，新的才會來', line:'這是一段需要放下與重整的時期，坦然面對變動，反而能迎來新生。' },
+];
+const ELEM_ACTION = {
+  '火':'先行動再修正：今天就踏出一小步，別等萬事俱備',
+  '水':'傾聽內心的感受，給情緒一個安全的出口',
+  '風':'把想法寫下來，找一位信任的人好好談一談',
+  '土':'列出具體步驟、時間與預算，按部就班執行',
+};
+const ELEM_LACK = {
+  '火':'缺少火元素：多一點行動力與熱情，別只停在想',
+  '水':'缺少水元素：別忽略感受與直覺，問問自己真正想要什麼',
+  '風':'缺少風元素：多收集資訊、理性分析，避免只憑衝動',
+  '土':'缺少土元素：把計畫落實到可執行的細節與期限',
+};
+function elemRelation(a, b) {
+  if (a === b) return { w:'同頻共振', d:'能量相同，容易理解彼此，但也可能放大同樣的盲點。' };
+  const k = [a,b].sort().join('');
+  const R = {
+    '火風':{ w:'相生助燃', d:'彼此激勵、互相點燃熱情與想法，互動充滿火花。' },
+    '土水':{ w:'相互滋養', d:'一方給予安全感、一方給予溫柔，是穩定互補的組合。' },
+    '水火':{ w:'激烈拉扯', d:'熱情與情緒容易互相衝撞，需要學會降溫與體諒。' },
+    '土風':{ w:'步調不同', d:'一個重實際、一個重想法，需要多溝通才能對頻。' },
+    '土火':{ w:'一急一緩', d:'一方想衝、一方想穩，找到共同節奏是關鍵。' },
+    '水風':{ w:'感性理性錯位', d:'一方用心感受、一方用腦思考，容易覺得對方不懂自己。' },
+  };
+  return R[k] || { w:'交織互動', d:'' };
+}
+function trendOf(tones) {
+  const a = tones[0], m = tones[Math.floor(tones.length/2)], z = tones[tones.length-1];
+  if (m < a - .3 && m < z - .3) return { w:'谷底反彈', d:'中段是低點，但走勢最後回升，撐過眼前就會好轉。' };
+  if (m > a + .3 && m > z + .3) return { w:'高點回落', d:'眼前正處高峰，要提早布局，避免後勁不足。' };
+  if (z - a >= .4) return { w:'逐步上升', d:'整體一路向上，局勢正在往好的方向發展。' };
+  if (a - z >= .4) return { w:'逐漸下滑', d:'若不調整做法，情況可能慢慢走弱，現在就是修正的時機。' };
+  return { w:'平穩延續', d:'走勢大致平穩，目前的狀態會延續一段時間。' };
+}
+
+const sec = (icon, title, body) => ({ icon, title, body });
+const p = (pos, c) => `<b>${pos}</b>｜${cardLabel(c)}：${cardMeaning(c)}`;
+
+// 各牌陣專屬綜整
+const SPREAD_SYNTH = {
+  single(cards) {
+    const c = cards[0];
+    return { keyIdx:0, sections:[
+      sec('✦','核心訊息', `${p('指引',c)}<br>關鍵字：${c.kw.join('、')}。`),
+      sec('☽','這張牌想告訴你', toneWord(cardTone(c)).w === '順遂' || cardTone(c) > .2
+        ? `這是一張給你力量的牌，${kw2(c)}正是你現在可以發揮的特質。`
+        : `這張牌點出需要留意的地方：${kw2(c)}。把它當作提醒，而不是定論。`),
+    ]};
+  },
+  trinity(cards) {
+    const t = cards.map(cardTone), tr = trendOf(t);
+    return { keyIdx:2, sections:[
+      sec('⟶','時間之流', `從過去的「${kw2(cards[0])}」，走到現在的「${kw2(cards[1])}」，未來指向「${kw2(cards[2])}」。`),
+      sec('📈',`走勢：${tr.w}`, tr.d + `<br><span class="sy-mini">過去 ${toneWord(t[0]).w} → 現在 ${toneWord(t[1]).w} → 未來 ${toneWord(t[2]).w}</span>`),
+      sec('🔑','轉折關鍵', `現在的${cardLabel(cards[1])}是連接過去與未來的樞紐：${cardMeaning(cards[1])}`),
+    ]};
+  },
+  choice(cards) {
+    const [a,b,adv] = cards, ta = cardTone(a)*cardWeight(a), tb = cardTone(b)*cardWeight(b);
+    const diff = ta - tb;
+    let verdict;
+    if (Math.abs(diff) < .4) verdict = '兩個選項的能量相當，沒有絕對的好壞，關鍵在於你更想承擔哪一種課題——請參考建議牌。';
+    else verdict = `能量上<b>${diff>0?'選項 A':'選項 B'}</b>較為順暢（${toneWord(diff>0?cardTone(a):cardTone(b)).w}），另一個選項則${toneWord(diff>0?cardTone(b):cardTone(a)).w}。`;
+    return { keyIdx:2, sections:[
+      sec('A', '選項 A', `${cardLabel(a)}：${cardMeaning(a)}`),
+      sec('B', '選項 B', `${cardLabel(b)}：${cardMeaning(b)}`),
+      sec('⚖','比較結果', verdict + `<br><span class="sy-mini">A ${a.el}元素 × B ${b.el}元素：${elemRelation(a.el,b.el).w}</span>`),
+      sec('🧭','抉擇建議', `${cardLabel(adv)}提醒你，做決定時把握「${kw2(adv)}」。${cardMeaning(adv)}`),
+    ]};
+  },
+  celtic(cards) {
+    const [now,ch,root,past,goal,near,self,env,hope,out] = cards;
+    const align = (cardTone(root) > 0) === (cardTone(goal) > 0);
+    const inOut = (cardTone(self) > 0) === (cardTone(env) > 0);
+    const tr = trendOf([past,now,near].map(cardTone));
+    return { keyIdx:9, sections:[
+      sec('✚','核心矛盾', `你處在「${kw2(now)}」的狀態，而橫在眼前的是「${kw2(ch)}」。${cardMeaning(ch)}`),
+      sec('⇅','內在與目標', align
+        ? `根基（${cardLabel(root)}）與目標（${cardLabel(goal)}）方向一致，內心真正想要的與你追求的相符。`
+        : `根基（${cardLabel(root)}）與目標（${cardLabel(goal)}）並不一致——你嘴上追求的，未必是內心深處真正需要的。`),
+      sec('⟶',`時間走勢：${tr.w}`, `過去的${past.name}正在淡出，近期將迎來${near.name}。${tr.d}`),
+      sec('◐','自我與環境', inOut
+        ? `你的態度（${self.name}）與外在環境（${env.name}）同向，外界大致支持你。`
+        : `你的態度（${self.name}）與外在環境（${env.name}）有落差，需要調整期待或尋找支援。`),
+      sec('♡','希望與恐懼', `${cardLabel(hope)}：你既期待又擔心的是「${kw2(hope)}」。看見它，恐懼就少了一半。`),
+      sec('★',`最終結果：${toneWord(cardTone(out)).w}`, `${cardLabel(out)}：${cardMeaning(out)}`),
+    ]};
+  },
+  hexagram(cards) {
+    const [now,past,fut,adv,ext,hope,out] = cards;
+    const tr = trendOf([past,now,fut].map(cardTone));
+    const extTone = cardTone(ext);
+    return { keyIdx:3, sections:[
+      sec('⟶',`時間軸：${tr.w}`, `過去 ${past.name} → 現在 ${now.name} → 未來 ${fut.name}。${tr.d}`),
+      sec('🌐','外部影響', extTone > .2
+        ? `外在助力明顯（${cardLabel(ext)}），可以多借助身邊的人與資源。`
+        : extTone < -.2 ? `外在有干擾或阻力（${cardLabel(ext)}），守住自己的節奏，不被牽著走。`
+        : `外在因素影響不大（${cardLabel(ext)}），主導權主要在你手上。`),
+      sec('♡','內心的希望與恐懼', `${cardLabel(hope)}：${cardMeaning(hope)}`),
+      sec('🧭','行動建議', `${cardLabel(adv)}：${cardMeaning(adv)}`),
+      sec('★',`結果：${toneWord(cardTone(out)).w}`, `${cardLabel(out)}：${cardMeaning(out)}`),
+    ]};
+  },
+  relationship(cards) {
+    const [you,them,rel,ch,adv] = cards;
+    const r = elemRelation(you.el, them.el);
+    const ty = cardTone(you), tt = cardTone(them);
+    const bal = Math.abs(ty - tt) < .4 ? '雙方的狀態相近，關係處在對等的位置。'
+      : ty > tt ? '你目前的狀態比對方穩定，對方可能正承受較多壓力，需要你多一點體諒。'
+      : '對方目前比你穩定，你可能付出或擔憂較多，記得也照顧好自己。';
+    return { keyIdx:4, sections:[
+      sec('⇄',`雙方能量：${r.w}`, `你是${cardLabel(you)}（${you.el}），對方是${cardLabel(them)}（${them.el}）。${r.d}`),
+      sec('⚖','互動平衡', bal),
+      sec('♡',`關係現狀：${toneWord(cardTone(rel)).w}`, `${cardLabel(rel)}：${cardMeaning(rel)}`),
+      sec('⚡','共同課題', `${cardLabel(ch)}：需要一起面對的是「${kw2(ch)}」。`),
+      sec('🧭','經營建議', `${cardLabel(adv)}：${cardMeaning(adv)}`),
+    ]};
+  },
+};
+
+// 第一條行動建議依關鍵牌吉凶換說法（困難牌不能說「把握」）
+function keyAction(c, pos) {
+  const t = cardTone(c), base = CARD_POLARITY[c.id] ?? .4;
+  if (c.reversed && base <= -.2) return `「${pos}」牌是逆位的${c.name}：「${kw2(c)}」的低潮正在過去，可以慢慢走出來了`;
+  if (t >= .2) return `依「${pos}」牌的提示，好好把握「${kw2(c)}」的能量`;
+  if (c.reversed && base >= .2) return `「${pos}」牌的「${kw2(c)}」能量正受阻，先找出卡住的原因`;
+  return `正視「${pos}」牌點出的「${kw2(c)}」課題，不逃避、也不放大它`;
+}
+
+function buildSpreadSummary(cards, spreadKey) {
+  const sp = SPREADS[spreadKey];
+  const fn = SPREAD_SYNTH[spreadKey] || SPREAD_SYNTH.single;
+  const syn = fn(cards);
+  // 加權整體傾向（結果/建議等位置略加重）
+  let sum = 0, wsum = 0;
+  cards.forEach((c,i) => { const w = cardWeight(c) * (i === syn.keyIdx ? 1.4 : 1); sum += cardTone(c)*w; wsum += w; });
+  const overall = wsum ? sum / wsum : 0;
+  const v = VERDICTS.find(x => overall >= x.min);
+  // 元素分佈
+  const cnt = { '火':0,'水':0,'風':0,'土':0 };
+  cards.forEach(c => { if (cnt[c.el] !== undefined) cnt[c.el]++; });
+  const dom = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
+  const missing = cards.length >= 4 ? Object.keys(cnt).filter(k=>!cnt[k]) : [];
+  const key = cards[syn.keyIdx] || cards[0];
+  const actions = [
+    keyAction(key, sp.pos[syn.keyIdx] || '指引'),
+    ELEM_ACTION[dom],
+    missing.length ? ELEM_LACK[missing[0]]
+      : (cards.some(c=>c.reversed) ? '逆位牌提醒你：先處理卡住的地方，再往前走' : '保持現在的節奏，相信自己的判斷'),
+  ];
+  return { sp, syn, overall, verdict: v, dom, cnt, missing, key, keyPos: sp.pos[syn.keyIdx] || '指引', actions };
+}
+
+function renderSynthesisHTML(sum) {
+  return `<div class="synth-box">
+    <div class="synth-title">✦ ${sum.sp.name} · 牌陣綜整 ✦</div>
+    ${sum.syn.sections.map(s=>`<div class="sy-sec"><div class="sy-ic">${s.icon}</div>
+      <div><div class="sy-h">${s.title}</div><div class="sy-b">${s.body}</div></div></div>`).join('')}
+  </div>`;
+}
+
+function renderSummaryCardHTML(sum) {
+  const q = (document.getElementById('spreadQ')?.value || '').trim();
+  const pct = Math.round((sum.overall + 1) * 50);
+  return `<div class="sum-card-wrap">
+    <div class="sum-card" id="sumCard">
+      <div class="sum-top">總結建議牌卡 · ${sum.sp.name}</div>
+      ${q ? `<div class="sum-q">「${escHTML(q)}」</div>` : ''}
+      <div class="sum-title">${sum.verdict.title}</div>
+      <div class="sum-sub">${sum.verdict.sub}</div>
+      <div class="sum-meter"><div style="width:${pct}%"></div></div>
+      <div class="sum-key">
+        <div class="sum-key-art">${sum.key.art}</div>
+        <div><div class="sum-key-lbl">${sum.keyPos}牌</div>
+        <div class="sum-key-name">${sum.key.name}${sum.key.reversed?' · 逆位':''}</div></div>
+      </div>
+      <div class="sum-line">${sum.verdict.line}</div>
+      <ol class="sum-acts">${sum.actions.map(a=>`<li>${a}</li>`).join('')}</ol>
+      <div class="sum-elems">${Object.entries(sum.cnt).map(([k,n])=>`<span class="${n?'':'off'}">${ELEMENT_CONFIG[k].icon}${n}</span>`).join('')}</div>
+      <div class="sum-foot">${new Date().toLocaleDateString('zh-TW')} · 塔羅秘境 ARCANA</div>
+    </div>
+    <div class="action-bar" style="margin-top:12px;">
+      <button class="btn-s" onclick="saveSummaryImage()">📥 存成圖片／分享</button>
+    </div>
+  </div>`;
+}
+
+// 總結牌卡輸出成圖片（Canvas 繪製，iOS 可直接分享到 LINE）
+function saveSummaryImage() {
+  const sum = S.spreadSummary; if (!sum) return;
+  const W = 720;
+  // 先在暫存畫布量出內容高度，再用剛好的高度正式繪製
+  const draw = (H, x) => {
+  const bg = x.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#2b1550'); bg.addColorStop(1,'#0a0612');
+  x.fillStyle = bg; x.fillRect(0,0,W,H);
+  const gold = '#c9a84c', cream = '#efe3c2';
+  const rr = (X,Y,w,h,r)=>{ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); };
+  x.strokeStyle = gold; x.lineWidth = 4; rr(28,28,W-56,H-56,28); x.stroke();
+  x.globalAlpha = .45; x.lineWidth = 1.5; rr(44,44,W-88,H-88,18); x.stroke(); x.globalAlpha = 1;
+  x.textAlign = 'center'; x.fillStyle = gold; x.font = '22px serif';
+  x.fillText(`總結建議牌卡 · ${sum.sp.name}`, W/2, 100);
+  let y = 140;
+  const q = (document.getElementById('spreadQ')?.value || '').trim();
+  const wrap = (t, maxW, lh, font, color, align='center', X=W/2) => {
+    x.font = font; x.fillStyle = color; x.textAlign = align; let cur='';
+    for (const ch of t) { if (x.measureText(cur+ch).width > maxW && cur && !'，。、」』！？：；）'.includes(ch)) { x.fillText(cur, X, y); y += lh; cur = ch; } else cur += ch; }
+    if (cur) { x.fillText(cur, X, y); y += lh; }
+  };
+  if (q) { wrap(`「${q}」`, W-160, 32, 'italic 22px serif', 'rgba(239,227,194,.7)'); y += 6; }
+  y += 50; x.font = 'bold 64px serif'; x.fillStyle = '#f3dc94'; x.fillText(sum.verdict.title, W/2, y);
+  y += 46; x.font = '24px serif'; x.fillStyle = 'rgba(239,227,194,.75)'; x.fillText(sum.verdict.sub, W/2, y);
+  y += 34; x.fillStyle = 'rgba(255,255,255,.1)'; rr(160,y,W-320,10,5); x.fill();
+  x.fillStyle = gold; rr(160,y,(W-320)*(sum.overall+1)/2,10,5); x.fill();
+  y += 112; x.textAlign = 'center'; x.font = '80px serif'; x.fillText(sum.key.art, W/2, y);
+  y += 46; x.font = '22px serif'; x.fillStyle = gold; x.fillText(`${sum.keyPos}牌`, W/2, y);
+  y += 38; x.font = 'bold 30px serif'; x.fillStyle = cream; x.fillText(sum.key.name + (sum.key.reversed?' · 逆位':''), W/2, y);
+  y += 56; wrap(sum.verdict.line, W-160, 36, '24px serif', cream);
+  y += 20; x.strokeStyle = 'rgba(201,168,76,.4)'; x.beginPath(); x.moveTo(120,y); x.lineTo(W-120,y); x.stroke(); y += 48;
+  sum.actions.forEach((a,i) => { y += 4; wrap(`${i+1}. ${a}`, W-200, 34, '23px serif', cream, 'left', 100); y += 10; });
+  x.textAlign = 'center'; x.font = '26px serif'; x.fillStyle = cream;
+  x.fillText(Object.entries(sum.cnt).map(([k,n])=>`${ELEMENT_CONFIG[k].icon}${n}`).join('   '), W/2, H-120);
+  x.font = '18px serif'; x.fillStyle = 'rgba(201,168,76,.6)';
+  x.fillText(`${new Date().toLocaleDateString('zh-TW')} · 塔羅秘境 ARCANA`, W/2, H-74);
+  return y;
+  };
+  const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = 2400;
+  const H = Math.max(900, Math.ceil(draw(2400, tmp.getContext('2d'))) + 170);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  draw(H, cv.getContext('2d'));
+  cv.toBlob(blob => {
+    const file = new File([blob], 'tarot-summary.png', { type:'image/png' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })) {
+      navigator.share({ files:[file], title:'塔羅秘境 · 總結建議' }).catch(()=>{});
+    } else {
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'tarot-summary.png'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    }
+  }, 'image/png');
+}
+
 // 賽爾特十字：左側十字（1 現狀、2 橫跨的挑戰、3 根基、4 過去、5 目標、6 近期）＋右側權杖列（7→10 由下往上）
 function buildCelticLayout(cards, sp) {
   const cell=(i,extra='')=>{
@@ -3631,6 +3953,13 @@ function renderSpreadCards() {
     </div>`;
   });
   interpArea.innerHTML=ihtml;
+
+  // 牌陣綜整（最上方）＋ 總結建議牌卡（最下方）
+  try {
+    S.spreadSummary = buildSpreadSummary(S.spreadCards, S.selectedSpread);
+    document.getElementById('spreadSynthArea').innerHTML = renderSynthesisHTML(S.spreadSummary);
+    document.getElementById('spreadSummaryArea').innerHTML = renderSummaryCardHTML(S.spreadSummary);
+  } catch (e) { console.error('summary error', e); }
 }
 
 function toggleSI(header) {
@@ -3655,6 +3984,9 @@ function resetSpread() {
   document.getElementById('detectNoticeArea').innerHTML='';
   document.getElementById('spreadDeepArea').innerHTML='';
   document.getElementById('spreadInterpArea').innerHTML='';
+  document.getElementById('spreadSynthArea').innerHTML='';
+  document.getElementById('spreadSummaryArea').innerHTML='';
+  S.spreadSummary=null;
   document.getElementById('spreadAIR').classList.remove('show');
   document.getElementById('sAITxt').innerHTML='';
   document.getElementById('spreadQ').value='';
@@ -3970,7 +4302,13 @@ async function getAI(type) {
     </div>`;
 
   // ── 組裝 prompt ─────────────────────────────────────
-  const prompt = buildEnrichedPrompt(type);
+  let prompt = buildEnrichedPrompt(type);
+  if (type === 'spread' && S.spreadSummary) {
+    const sm = S.spreadSummary;
+    prompt += `\n\n【系統牌陣綜整（供參考，可補充或修正）】\n整體：${sm.verdict.title}（${sm.verdict.sub}）\n` +
+      sm.syn.sections.map(x=>`- ${x.title}：${x.body.replace(/<[^>]+>/g,'')}`).join('\n') +
+      `\n請在解讀最後，以「總結建議」為標題，給出 3 點具體可行的建議。`;
+  }
 
   try {
     // 串流中先顯示一個暫時區塊，字一段段出來
@@ -4132,6 +4470,7 @@ function saveReadingToJournal(type, raw, cards) {
       moon: getMoonPhase().name,
       solar: getSolarTerm().name,
       reading: raw,
+      verdict: type==='spread' ? (S.spreadSummary?.verdict.title||'') : '',
     };
     S.journal.unshift(entry);
     S.lastAIEntryId = S.lastAIEntryId || {};
@@ -4793,7 +5132,8 @@ function confirmSave(){
       type:S.saveContext, spreadName, mood:S.selectedMood,
       cards:cards.map(c=>({name:c.name,art:c.art,reversed:!!c.reversed})),
       question:S.saveContext==='spread'?(document.getElementById('spreadQ')?.value||''):'',
-      note, reading:S.lastReading?.[S.saveContext]?.raw||''
+      note, reading:S.lastReading?.[S.saveContext]?.raw||'',
+      verdict: S.saveContext==='spread' ? (S.spreadSummary?.verdict.title||'') : ''
     };
     S.journal.unshift(entry);
     S.lastAIEntryId=S.lastAIEntryId||{};
@@ -4830,7 +5170,7 @@ function renderJournal(){
     <div class="je" style="margin-bottom:12px;">
       <button class="je-del" onclick="delJEntry(${e.id},event)">✕</button>
       <div class="je-hdr">
-        <div><div class="je-date">${escHTML(e.date)}</div><div class="je-spread">${escHTML(e.spreadName)}${e.style?` · ${escHTML(e.style)}`:''}</div></div>
+        <div><div class="je-date">${escHTML(e.date)}</div><div class="je-spread">${escHTML(e.spreadName)}${e.verdict?` · 「${escHTML(e.verdict)}」`:''}${e.style?` · ${escHTML(e.style)}`:''}</div></div>
         <div class="je-mood">${escHTML(e.mood)}</div>
       </div>
       <div class="je-cards">${(Array.isArray(e.cards)?e.cards:[]).map(c=>`<span class="je-tag">${escHTML(c.art)} ${escHTML(c.name)}${c.reversed?'↓':''}</span>`).join('')}</div>

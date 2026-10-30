@@ -2,7 +2,7 @@
 // Strategy: Network-First (HTML，離線時用快取/離線頁) + Cache-First (assets)
 // 更新 index.html 後請把 CACHE_NAME 的版本號 +1
 
-const CACHE_NAME = 'ai秘境塔羅-v6';
+const CACHE_NAME = 'ai秘境塔羅-v7';
 const PRECACHE_URLS = [
     "/tarot/index.html",
     "/tarot/sw.js",
