@@ -2,7 +2,10 @@
 // Strategy: Network-First (HTML，離線時用快取/離線頁) + Cache-First (assets)
 // 更新 index.html 後請把 CACHE_NAME 的版本號 +1
 
-const CACHE_NAME = 'ai秘境塔羅-v8';
+const CACHE_NAME = 'ai秘境塔羅-v9';
+// 牌面圖另存一個快取：App 更新時不刪，不必重新下載 78 張圖（約 2.7 MB）
+const CARD_CACHE = 'ai秘境塔羅-cards-v1';
+const CARD_URLS = Array.from({ length: 78 }, (_, i) => '/tarot/cards/' + String(i).padStart(2, '0') + '.webp');
 const PRECACHE_URLS = [
     "/tarot/index.html",
     "/tarot/sw.js",
@@ -24,6 +27,12 @@ self.addEventListener('install', event => {
       });
     }).then(() => self.skipWaiting())
   );
+  // 牌面圖在背景下載，不擋安裝；沒下載完的會在第一次顯示時補進快取
+  caches.open(CARD_CACHE).then(async cache => {
+    for (const u of CARD_URLS) {
+      if (!(await cache.match(u))) await cache.add(u).catch(() => {});
+    }
+  });
 });
 
 // Activate: clean old caches
@@ -31,7 +40,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys.filter(k => k !== CACHE_NAME)
+        keys.filter(k => k !== CACHE_NAME && k !== CARD_CACHE)
             .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
@@ -66,6 +75,19 @@ self.addEventListener('fetch', event => {
       })
     );
   } else {
+    // 牌面圖：Cache-First，存進不會被清掉的牌面快取
+    if (url.pathname.startsWith('/tarot/cards/')) {
+      event.respondWith(
+        caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CARD_CACHE).then(cache => cache.put(event.request, copy));
+          }
+          return response;
+        }))
+      );
+      return;
+    }
     // Cache-First for assets
     event.respondWith(
       caches.match(event.request).then(cached => {

@@ -26,6 +26,12 @@ git push -u origin main
 
 然後在 GitHub repo → **Settings → Pages** → Source 選 `main` 分支，等待幾分鐘後即可訪問。
 
+## 🃏 牌面圖
+
+`cards/00.webp`～`77.webp` 是 Pamela Colman Smith 繪製的 Rider–Waite–Smith「Pam-A」版（1910）掃描，
+取自 Wikimedia Commons〈Rider-Waite-Smith tarot deck (TaionWC)〉，標示為公有領域；逐張來源見 `cards/SOURCES.md`。
+編號與 `DB` 的 `id` 相同。逆位用 CSS 轉 180°。Service Worker 會在背景把 78 張存進獨立快取（App 更新時不重下載）。
+
 ## 📱 安裝 PWA
 
 在支援的瀏覽器（Chrome / Edge / Safari iOS）中打開網頁，  

@@ -109,6 +109,22 @@ border:2px solid rgba(201,168,76,.5);display:flex;flex-direction:column;
 align-items:center;justify-content:space-between;padding:10px 8px;overflow:hidden;}
 .cf::before{content:'';position:absolute;inset:5px;border:1px solid rgba(201,168,76,.12);
 border-radius:8px;pointer-events:none;}
+.cf.has-img{padding:0;overflow:hidden;}
+.cf.has-img .c-num,.cf.has-img .c-name{display:none;}
+.cf.has-img .c-art{position:absolute;inset:0;filter:none;}
+.card-img{display:block;max-width:100%;}
+.card-img.rev{transform:rotate(180deg);}
+.c-img{width:100%;height:100%;object-fit:cover;border-radius:12px;}
+.sc.has-img{padding:0;overflow:hidden;}
+.sc.has-img .sc-name{display:none;}
+.sc-img{width:100%;height:100%;object-fit:cover;border-radius:8px;}
+.cc-card.has-img{padding:0;overflow:hidden;}
+.cc-card.has-img .cc-name{display:none;}
+.cc-img{width:100%;height:100%;object-fit:cover;border-radius:7px;}
+.si-img{width:30px;height:50px;object-fit:cover;border-radius:3px;}
+.sum-img{width:72px;height:120px;object-fit:cover;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,.5);}
+.lc-img{width:64px;height:107px;object-fit:cover;border-radius:5px;margin:0 auto;box-shadow:0 4px 12px rgba(0,0,0,.45);}
+.md-img{width:150px;height:250px;object-fit:cover;border-radius:10px;margin:0 auto;box-shadow:0 10px 28px rgba(0,0,0,.6);}
 .c-num{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.2em;color:var(--gold);opacity:.75;}
 .c-art{font-size:62px;filter:drop-shadow(0 0 12px rgba(201,168,76,.35));
 flex:1;display:flex;align-items:center;justify-content:center;}
@@ -246,7 +262,7 @@ animation:cardPop .55s cubic-bezier(.34,1.56,.64,1) both;}
 .cc-art{font-size:24px;filter:drop-shadow(0 0 6px rgba(201,168,76,.3));}
 .celtic-staff .cc-art{font-size:20px;}
 .cc-name{font-size:9px;color:var(--gold-light);text-align:center;line-height:1.2;padding:0 2px;}
-.cc-n{position:absolute;top:3px;left:5px;font-family:'Cinzel',serif;font-size:8px;color:var(--gold);opacity:.6;}
+.cc-n{position:absolute;top:3px;left:5px;z-index:2;background:rgba(10,6,18,.7);border-radius:3px;padding:0 3px;font-family:'Cinzel',serif;font-size:8px;color:var(--gold);opacity:.6;}
 .cc-lbl{font-size:9.5px;color:var(--silver);opacity:.6;line-height:1.25;max-width:80px;margin:0 auto;}
 .cc-center .cc-lbl{max-width:120px;}
 .cc-stack{position:relative;width:104px;height:144px;display:flex;align-items:center;justify-content:center;}
@@ -3246,6 +3262,34 @@ const S = {
 // ═══════════════════════════════════════════════════════════════
 // UTILITY
 // ═══════════════════════════════════════════════════════════════
+// ── 牌面圖：Pamela Colman Smith 1910 年 Pam-A 原版（公有領域），cards/00.webp…77.webp，來源見 cards/SOURCES.md
+// 逆位用 CSS 把圖轉 180°；圖片載入失敗時退回原本的表情符號
+function cardId(c){
+  if (c && typeof c.id === 'number') return c.id;
+  const d = c && DB.find(x => x.name === c.name);
+  return d ? d.id : null;
+}
+function cardSrc(c){ const id = cardId(c); return id == null ? '' : 'cards/' + String(id).padStart(2,'0') + '.webp'; }
+function cardImg(c, cls='', rev=false){
+  const src = cardSrc(c);
+  if (!src) return c.art || '🃏';
+  const art = (c.art || '🃏').replace(/'/g, '');
+  return `<img class="card-img ${cls}${rev ? ' rev' : ''}" src="${src}" alt="${escHTML(c.name)}" decoding="async" onerror="this.outerHTML='${art}'">`;
+}
+// 畫進 Canvas 用：先把牌面圖載好（失敗回傳 null，改畫表情符號）
+function loadCardImages(cards){
+  return Promise.all(cards.map(c => new Promise(res => {
+    const src = cardSrc(c); if (!src) return res(null);
+    const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src;
+  })));
+}
+function drawCardImage(x, im, X, Y, w, h, reversed){
+  x.save();
+  if (reversed) { x.translate(X + w/2, Y + h/2); x.rotate(Math.PI); x.translate(-(X + w/2), -(Y + h/2)); }
+  x.drawImage(im, X, Y, w, h);
+  x.restore();
+}
+
 function pickCard(exclude=[]) {
   const pool = DB.filter(c => !exclude.includes(c.id));
   const c = {...pool[Math.floor(Math.random()*pool.length)]};
@@ -3400,7 +3444,8 @@ function flipDailyCard(restoring=false) {
 
   // Fill card face
   document.getElementById('dNum').textContent=S.dailyCard.num;
-  document.getElementById('dArt').textContent=S.dailyCard.art;
+  document.getElementById('dArt').innerHTML=cardImg(S.dailyCard,'c-img');
+  document.getElementById('dailyCF').classList.toggle('has-img', !!cardSrc(S.dailyCard));
   document.getElementById('dName').textContent=S.dailyCard.reversed?`${S.dailyCard.name}（逆位）`:S.dailyCard.name;
 
   if(restoring){ showDailyInterp(); return; }
@@ -3443,6 +3488,7 @@ function resetDaily() {
   el.classList.remove('flipped','reversed','shimmer');
   document.getElementById('dNum').textContent='';
   document.getElementById('dArt').textContent='';
+  document.getElementById('dailyCF').classList.remove('has-img');
   document.getElementById('dName').textContent='';
   document.getElementById('dHint').style.display='block';
   document.getElementById('dailyIP').classList.remove('show');
@@ -3775,7 +3821,7 @@ function renderSummaryCardHTML(sum) {
       <div class="sum-sub">${sum.verdict.sub}</div>
       <div class="sum-meter"><div style="width:${pct}%"></div></div>
       <div class="sum-key">
-        <div class="sum-key-art">${sum.key.art}</div>
+        <div class="sum-key-art">${cardImg(sum.key,'sum-img',sum.key.reversed)}</div>
         <div><div class="sum-key-lbl">${sum.keyPos}牌</div>
         <div class="sum-key-name">${sum.key.name}${sum.key.reversed?' · 逆位':''}</div></div>
       </div>
@@ -3791,8 +3837,9 @@ function renderSummaryCardHTML(sum) {
 }
 
 // 總結牌卡輸出成圖片（Canvas 繪製，iOS 可直接分享到 LINE）
-function saveSummaryImage() {
+async function saveSummaryImage() {
   const sum = S.spreadSummary; if (!sum) return;
+  const [keyImg] = await loadCardImages([sum.key]);
   const W = 720;
   // 先在暫存畫布量出內容高度，再用剛好的高度正式繪製
   const draw = (H, x) => {
@@ -3816,8 +3863,8 @@ function saveSummaryImage() {
   y += 46; x.font = '24px serif'; x.fillStyle = 'rgba(239,227,194,.75)'; x.fillText(sum.verdict.sub, W/2, y);
   y += 34; x.fillStyle = 'rgba(255,255,255,.1)'; rr(160,y,W-320,10,5); x.fill();
   x.fillStyle = gold; rr(160,y,(W-320)*(sum.overall+1)/2,10,5); x.fill();
-  y += 112; x.textAlign = 'center'; x.font = '80px serif'; x.fillText(sum.key.art, W/2, y);
-  y += 46; x.font = '22px serif'; x.fillStyle = gold; x.fillText(`${sum.keyPos}牌`, W/2, y);
+  if (keyImg) { y += 44; drawCardImage(x, keyImg, W/2 - 84, y, 168, 280, sum.key.reversed); y += 280 + 40; }
+  else { y += 112; x.textAlign = 'center'; x.font = '80px serif'; x.fillText(sum.key.art, W/2, y); y += 46; } x.font = '22px serif'; x.fillStyle = gold; x.fillText(`${sum.keyPos}牌`, W/2, y);
   y += 38; x.font = 'bold 30px serif'; x.fillStyle = cream; x.fillText(sum.key.name + (sum.key.reversed?' · 逆位':''), W/2, y);
   y += 56; wrap(sum.verdict.line, W-160, 36, '24px serif', cream);
   y += 20; x.strokeStyle = 'rgba(201,168,76,.4)'; x.beginPath(); x.moveTo(120,y); x.lineTo(W-120,y); x.stroke(); y += 48;
@@ -3848,9 +3895,9 @@ function saveSummaryImage() {
 function buildCelticLayout(cards, sp) {
   const cell=(i,extra='')=>{
     const c=cards[i]; if(!c) return '';
-    return `<div class="cc-card ${extra}" style="animation-delay:${i*0.1}s" title="${i+1}. ${sp.pos[i]}">
+    return `<div class="cc-card has-img ${extra}" style="animation-delay:${i*0.1}s" title="${i+1}. ${sp.pos[i]}">
       <span class="cc-n">${i+1}</span>
-      <div class="cc-art">${c.art}</div>
+      ${cardImg(c,'cc-img',c.reversed)}
       <div class="cc-name">${c.name}${c.reversed?'↓':''}</div>
     </div>`;
   };
@@ -3883,8 +3930,8 @@ function renderSpreadCards() {
   let html=`<div class="spread-cards-row">`;
   S.spreadCards.forEach((c,i)=>{
     html+=`<div class="sc-wrap">
-      <div class="sc filled" style="animation-delay:${i*0.12}s">
-        <div class="sc-art">${c.art}</div>
+      <div class="sc filled has-img" style="animation-delay:${i*0.12}s" title="${c.name}${c.reversed?'（逆位）':''}">
+        ${cardImg(c,'sc-img',c.reversed)}
         <div class="sc-name">${c.name}${c.reversed?'↓':''}</div>
       </div>
       <div class="sc-lbl">${sp.pos[i]||''}</div>
@@ -3940,7 +3987,7 @@ function renderSpreadCards() {
   S.spreadCards.forEach((c,i)=>{
     ihtml+=`<div class="si-card">
       <div class="si-header" onclick="toggleSI(this)">
-        <div class="si-art">${c.art}</div>
+        <div class="si-art">${cardImg(c,'si-img',c.reversed)}</div>
         <div>
           <div class="si-title">${c.name}${c.reversed?' · 逆位':''}</div>
           <div class="si-pos">${sp.pos[i]||''}${sp.layout==='celtic'&&POS_HINT[sp.pos[i]]?` · ${POS_HINT[sp.pos[i]]}`:''}</div>
@@ -4663,9 +4710,10 @@ async function sendFollowup(type) {
 // ═══════════════════════════════════════════════════════════════
 // 功能 7：分享卡片（Canvas 生成圖片）
 // ═══════════════════════════════════════════════════════════════
-function shareReading(type) {
+async function shareReading(type) {
   const reading = S.lastReading?.[type];
   if (!reading) return;
+  const imgs = await loadCardImages(reading.cards || []);
 
   const cards  = reading.cards || [];
   const text   = reading.raw || '';
@@ -4702,21 +4750,32 @@ function shareReading(type) {
   ctx.font='14px serif';
   ctx.fillText(date, W/2, 98);
 
+  // 牌面圖（最多 10 張，一排放得下的大小）
+  let top = 122;
+  const shown = cards.map((c,i)=>({c, im: imgs[i]})).filter(o=>o.im);
+  if (shown.length) {
+    const gap = 12, cw = Math.min(110, (W - 120 - gap*(shown.length-1)) / shown.length), ch = cw * 5/3;
+    let X = (W - (cw*shown.length + gap*(shown.length-1))) / 2;
+    shown.forEach(o => { drawCardImage(ctx, o.im, X, top, cw, ch, o.c.reversed); X += cw + gap; });
+    top += ch + 16;
+  }
+
   // 牌卡名稱
   ctx.fillStyle='#e8d5a0';
   ctx.font='20px serif';
-  ctx.fillText(cardNames, W/2, 140);
+  ctx.textAlign='center';
+  ctx.fillText(cardNames, W/2, top + 18);
 
   // 分隔線
   ctx.strokeStyle='rgba(201,168,76,0.3)';
   ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(80,158); ctx.lineTo(W-80,158); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(80,top+36); ctx.lineTo(W-80,top+36); ctx.stroke();
 
   // 解讀文字
   ctx.fillStyle='rgba(232,213,160,0.85)';
   ctx.font='16px serif';
   ctx.textAlign='left';
-  let y=190;
+  let y=top+68;
   lines.forEach(line=>{
     // 自動換行
     const words=line.replace(/\*\*/g,'');
@@ -5215,11 +5274,11 @@ function renderLib(){
   if(libActiveFilter!=='all') cards=DB.filter(c=>c.type===libActiveFilter);
   if(q) cards=cards.filter(c=>c.name.includes(q)||c.en.toLowerCase().includes(q)||(c.kw||[]).some(k=>k.includes(q)));
   const grid=document.getElementById('cardGrid');
-  if(grid) grid.innerHTML=cards.map(c=>`<div class="lc" onclick="openCardModal(${c.id})"><div class="lc-art">${c.art}</div><div class="lc-name">${c.name}</div><div class="lc-type">${c.en}</div></div>`).join('');
+  if(grid) grid.innerHTML=cards.map(c=>`<div class="lc" onclick="openCardModal(${c.id})"><div class="lc-art">${cardImg(c,'lc-img').replace('<img ','<img loading="lazy" ')}</div><div class="lc-name">${c.name}</div><div class="lc-type">${c.en}</div></div>`).join('');
 }
 function openCardModal(id){
   const c=DB.find(x=>x.id===id); if(!c) return;
-  document.getElementById('mArt').textContent=c.art;
+  document.getElementById('mArt').innerHTML=cardImg(c,'md-img');
   document.getElementById('mName').textContent=c.name;
   document.getElementById('mSub').textContent=`${c.en} · ${c.type==='major'?'大阿爾克那':'小阿爾克那'} · ${c.num}`;
   document.getElementById('mKw').innerHTML=(c.kw||[]).map(k=>`<span class="kw">${k}</span>`).join('');
